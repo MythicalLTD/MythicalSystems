@@ -1,45 +1,34 @@
-# mythicalsystems-docs
+# Mythical Systems
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+The official repository for the [mythical.systems](https://mythical.systems) website.
 
-Run development server:
+## Overview
 
-```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
-```
+Mythical Systems is a platform dedicated to providing robust software solutions and developer tools. This repository contains the source code for our main landing page and service portal.
 
-Open http://localhost:3000 with your browser to see the result.
+## Getting Started
 
-## Explore
+### Prerequisites
 
-In the project, you can see:
+- Node.js (v18.0.0 or higher)
+- npm, yarn, or pnpm
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+## Tech Stack
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/(home)`              | The route group for your landing page and other pages. |
-| `app/docs`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+- **Framework**: [Next.js](https://nextjs.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Deployment**: [Vercel](https://vercel.com/)
 
-### Fumadocs MDX
+## Contributing
 
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
+We welcome contributions! Please follow these steps:
 
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes (`git commit -m 'Add some amazing feature'`).
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request.
 
-## Learn More
+## License
 
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
