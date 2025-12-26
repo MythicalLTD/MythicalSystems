@@ -1,0 +1,217 @@
+---
+title: Developer Installation
+id: 'install-featherpanel-devs'
+pagination_prev: null
+---
+
+# Developer Installation
+
+FeatherPanel can be installed manually for development purposes, allowing live development and testing of the panel.
+
+:::warning Developer Only
+This installation method is **intended for developers only**. It is **not recommended for production use** or normal users, as running the panel in this way can be risky and is difficult to maintain. Proceed only if you understand the risks and are comfortable with development environments.
+:::
+
+## Prerequisites
+
+### Supported Operating Systems
+
+The following operating systems are officially supported for development:
+
+| Operating System                | Version  | Supported | Notes                                                         |
+|---------------------------------|----------|-----------|---------------------------------------------------------------|
+| **Ubuntu**                      | 20.04    | ✅        | Documentation assumes Ubuntu 20.04 as the base OS.            |
+|                                 | 22.04    | ✅        |                                                               |
+|                                 | 24.04    | ✅        |                                                               |
+| **RHEL / Rocky Linux / AlmaLinux** | 8        | ✅        |                                                               |
+|                                 | 9        | ✅        |                                                               |
+| **Debian**                      | 11       | ✅        |                                                               |
+|                                 | 12       | ✅        |                                                               |
+
+If your system is not listed above, you may still be able to install and run FeatherPanel by installing the required dependencies for your distribution.
+
+### System Requirements
+
+To run FeatherPanel in development mode, you will need:
+
+- A Linux system capable of running Docker containers
+- Minimum 2GB RAM (4GB recommended)
+- At least 10GB of free disk space
+- Root or sudo access
+
+# Installation Guide
+
+FeatherPanel is a powerful web-based control panel designed to run on your own server. This guide will walk you through the complete installation process. Please note that root access to your server is required to install and operate this panel.
+
+Before proceeding, we strongly recommend reading through this entire guide to ensure a smooth installation process. Taking the time to understand each step will help prevent common installation issues.
+
+> ⚠️ **WARNING: DEVELOPMENT INSTALLATION ONLY!**  
+>
+> This method **WILL GIVE PLUGINS AND ALL PANEL CODE FULL ROOT ACCESS TO YOUR ENTIRE FILESYSTEM**.  
+> If you are hacked, the attacker could **compromise or delete everything on your server**.  
+>
+> **This guide is strictly for plugin developers and advanced contributors.**  
+>  
+> **DO NOT** use this method for production servers or for regular panel usage!  
+>  
+> For safe operation, you should always use the [Docker installation method](/docs/featherpanel/welcome-featherpanel) for FeatherPanel, which provides strong isolation and security.  
+>  
+> **Again: This is an unsafe method intended ONLY for quickly debugging, developing, or extending FeatherPanel. Proceed ONLY if you understand and accept the risks.**
+
+
+## Prerequisites
+
+### Installing Composer
+Composer is PHP's dependency manager, essential for managing the panel's PHP packages:
+```bash
+curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+```
+
+### Installing Node Version Manager (NVM)
+
+To manage Node.js versions easily, it’s recommended to use [NVM (Node Version Manager)](https://github.com/nvm-sh/nvm).
+
+Install NVM with the following command:
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+```
+
+After installation, either restart your terminal, or run these lines *exactly as shown* to load `nvm` into your current session:
+```bash
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+```
+
+> ℹ️  
+> The install script will automatically attempt to update your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to load nvm in the future.  
+> If your shell doesn't load nvm after a restart, check your profile files or manually add the above lines.
+
+You can verify that NVM is working by running:
+```bash
+nvm --version
+```
+
+Once NVM is installed, you can quickly install and switch Node.js versions as needed:
+```bash
+nvm install --lts   # Install latest LTS version
+```
+
+For more details and troubleshooting, see the [official NVM documentation](https://github.com/nvm-sh/nvm#installing-and-updating).
+
+### Installing pnpm
+
+FeatherPanel's frontend uses pnpm, a fast and efficient package manager for Node.js, to manage dependencies.
+
+npm-check-updates is included to make it easy to check for and update outdated frontend packages. You can run `ncu` to check for package updates and `ncu -u` to upgrade your `package.json` dependencies automatically.
+
+Install pnpm globally with the following command:
+```bash
+npm install -g pnpm npm-check-updates
+```
+
+You can verify that pnpm is installed by running:
+```bash
+pnpm --version
+```
+
+> ℹ️  
+> If you encounter any issues, consult the [pnpm installation guide](https://pnpm.io/installation) for troubleshooting steps and additional installation methods.
+
+Once pnpm is installed, you'll be able to install all frontend dependencies in later steps.
+
+
+## Initial Setup
+
+Following these steps carefully will ensure a smooth installation process for FeatherPanel.
+
+
+### Downloading and Extracting Files
+
+Create the installation directory and download the latest release:
+```bash
+mkdir -p /var/www
+cd /var/www
+git clone https://github.com/mythicalltd/featherpanel.git featherpanel
+```
+
+Set appropriate permissions for the application directories:
+```bash
+chown -R www-data:www-data /var/www/featherpanel/*
+cd /var/www/featherpanel
+```
+
+### Installing Dependencies
+
+#### Backend
+Install all required dependencies:
+```bash
+COMPOSER_ALLOW_SUPERUSER=1 composer install --working-dir=/var/www/featherpanel/backend
+```
+
+#### Frontend
+Install all required dependencies:
+
+```bash
+pnpm install --dir /var/www/featherpanel/frontend/
+```
+
+### Creating Database and User
+Set up the database and create a user with appropriate permissions:
+```sql
+mariadb -u root -p
+CREATE USER 'featherpanel'@'127.0.0.1' IDENTIFIED BY 'yourPassword';
+CREATE DATABASE featherpanel;
+GRANT ALL PRIVILEGES ON featherpanel.* TO 'featherpanel'@'127.0.0.1' WITH GRANT OPTION;
+exit
+```
+
+### Cron Job Configuration
+
+It's best practice to run the FeatherPanel cron jobs as the `www-data` user rather than `root`. To do this, edit the crontab for `www-data`:
+
+```bash
+sudo crontab -u www-data -e
+```
+
+Then add the following lines to the bottom of the file:
+
+```bash
+* * * * * bash /var/www/featherpanel/backend/storage/cron/runner.bash >> /dev/null 2>&1
+* * * * * php /var/www/featherpanel/backend/storage/cron/runner.php >> /dev/null 2>&1
+```
+
+This will ensure the cron jobs run with the appropriate permissions for your web application.
+
+
+### Database Connection Setup
+Configure the database connection settings:
+```php
+php app setup
+```
+
+### Running Database Migrations
+Apply the database migrations to set up the required tables and structure:
+```php
+php app migrate
+```
+
+### Building the Frontend
+
+To build the frontend after installing dependencies, run:
+
+```bash
+cd /var/www/featherpanel/frontend
+pnpm build
+```
+
+This will generate the production-ready files in the `dist` directory, which can then be served by your web server.
+
+> **Tip:**  
+> If you're a developer and want to test the app with live frontend updates as you code, use the watch command instead:
+>
+> ```bash
+> cd /var/www/featherpanel/frontend
+> pnpm watch
+> ```
+>
+> This will start the development server and automatically reload the frontend whenever you make changes.

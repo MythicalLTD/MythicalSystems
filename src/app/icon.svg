@@ -1,0 +1,56 @@
+<svg
+    width="512"
+    height="512"
+    viewBox="0 0 512 512"
+    xmlns="http://www.w3.org/2000/svg"
+>
+    <!-- Background -->
+    <circle cx="256" cy="256" r="256" fill="#0d0f0a" />
+
+    <!-- Icon (bigger & higher) -->
+    <g
+        stroke="#8b5cf6"
+        stroke-width="20"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"
+        transform="translate(256 88) scale(1.15)"
+    >
+        <!-- < -->
+        <path d="M-64 4 L-108 46 L-64 88" />
+
+        <!-- / (angled) -->
+        <path d="M14 -8 L-10 104" />
+
+        <!-- > -->
+        <path d="M64 4 L108 46 L64 88" />
+    </g>
+
+    <!-- Mythical (bigger & closer to edges) -->
+    <text
+        x="256"
+        y="348"
+        text-anchor="middle"
+        fill="#ffffff"
+        font-size="104"
+        font-weight="700"
+        letter-spacing="-1.2"
+        font-family="Inter, Poppins, Montserrat, Arial, sans-serif"
+    >
+        Mythical
+    </text>
+
+    <!-- systems -->
+    <text
+        x="256"
+        y="424"
+        text-anchor="middle"
+        fill="#8b5cf6"
+        font-size="60"
+        font-weight="600"
+        letter-spacing="1.2"
+        font-family="Inter, Poppins, Montserrat, Arial, sans-serif"
+    >
+        systems
+    </text>
+</svg>

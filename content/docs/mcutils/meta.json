@@ -1,0 +1,11 @@
+{
+    "title": "MCUtils",
+    "description": "Minecraft Utilities",
+    "icon": "Wrench",
+    "root": true,
+    "pages": [
+        "intro",
+        "blueprint",
+        "standalone"
+    ]
+}

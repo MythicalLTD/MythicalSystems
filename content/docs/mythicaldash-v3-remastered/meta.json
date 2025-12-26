@@ -1,0 +1,23 @@
+{
+    "title": "MythicalDash V3 Remastered",
+    "description": "Updated Dashboard",
+    "icon": "LayoutDashboard",
+    "root": true,
+    "defaultIndex": 1,
+    "pages": [
+        "welcome",
+        "pick",
+        "os",
+        "install",
+        "---",
+        "webserver",
+        "createssl",
+        "cloudflare-tunnels",
+        "---",
+        "congratulations",
+        "finish",
+        "---",
+        "upgrade",
+        "uninstall"
+    ]
+}

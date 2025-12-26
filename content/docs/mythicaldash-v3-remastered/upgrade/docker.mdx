@@ -1,0 +1,198 @@
+---
+title: Docker Installation Upgrade
+id: 'docker'
+---
+
+# Docker Installation Upgrade
+
+This guide covers upgrading MythicalDash when you have installed it using Docker Compose.
+
+To avoid getting lost, we will:
+- Use absolute paths
+- Use variables for directories
+- Use Docker's `--project-directory` flag instead of `cd`
+
+Set these variables once (adjust if your path differs):
+
+```bash
+MD_DIR=/var/www/mythicaldash-v3
+UPG_DIR=/var/www/mythicaldash_upgrade_dir
+```
+
+## Step 1: Create Backup
+
+### Database Backup
+Create a database backup from the running container:
+
+```bash
+docker exec mythicaldash_v3_mysql mariadb-dump -u mythicaldash_v3 -pmythicaldash_v3_password mythicaldash_v3 > /var/www/mythicaldash_backup.sql
+```
+
+### Files Backup
+Backup your installation directory (without changing directories):
+
+```bash
+cd /var/www
+zip -r mythicaldash_backup.zip mythicaldash-v3/
+```
+
+### Configuration Backup
+Backup your Compose file:
+
+```bash
+cp "$MD_DIR"/docker-compose.yml "$MD_DIR"/docker-compose.yml.backup
+```
+
+## Step 2: Stop Containers
+
+```bash
+docker compose --project-directory "$MD_DIR" down
+```
+
+## Step 3: Download the Update and Preserve Existing Files
+
+### Preserve Important Existing Files
+
+```bash
+mkdir -p "$UPG_DIR"/public "$UPG_DIR"/storage
+mv "$MD_DIR"/backend/public/* "$UPG_DIR"/public/ 2>/dev/null || true
+mv "$MD_DIR"/backend/storage/backups "$UPG_DIR"/storage/ 2>/dev/null || true
+mv "$MD_DIR"/backend/storage/addons "$UPG_DIR"/storage/ 2>/dev/null || true
+mv "$MD_DIR"/backend/storage/.env "$UPG_DIR"/storage/ 2>/dev/null || true
+```
+
+### Download the Latest Version
+
+```bash
+rm -rf "$MD_DIR" && mkdir -p "$MD_DIR"
+curl -Lo /tmp/MythicalDash.zip https://github.com/MythicalLTD/MythicalDash/releases/latest/download/MythicalDash.zip
+unzip -o /tmp/MythicalDash.zip -d "$MD_DIR"
+```
+
+### Restore Preserved Files
+
+```bash
+mkdir -p "$MD_DIR"/backend/public "$MD_DIR"/backend/storage
+mv "$UPG_DIR"/public/* "$MD_DIR"/backend/public/ 2>/dev/null || true
+mv "$UPG_DIR"/storage/backups "$MD_DIR"/backend/storage/ 2>/dev/null || true
+mv "$UPG_DIR"/storage/addons "$MD_DIR"/backend/storage/ 2>/dev/null || true
+mv "$UPG_DIR"/storage/.env "$MD_DIR"/backend/storage/ 2>/dev/null || true
+```
+
+## Step 4: Rebuild and Start Containers
+
+```bash
+docker compose --project-directory "$MD_DIR" build --no-cache
+docker compose --project-directory "$MD_DIR" up -d
+```
+
+::::tip Why --no-cache?
+The `--no-cache` flag ensures Docker rebuilds the containers completely with the new files, preventing any caching issues.
+::::
+
+## Step 5: Wait for Initialization
+
+```bash
+docker compose --project-directory "$MD_DIR" ps
+docker compose --project-directory "$MD_DIR" logs -f
+```
+
+Press `Ctrl+C` when you see the containers are running successfully.
+
+## Verification
+
+### Check Container Status
+```bash
+docker compose --project-directory "$MD_DIR" ps
+```
+
+All containers should show as "Up" or "healthy".
+
+### Test Web Access
+Visit your MythicalDash URL to ensure it loads properly.
+
+### Check Application Logs
+```bash
+docker exec -it mythicaldash_v3_backend php cli logs
+```
+
+### Verify Database Migration
+If there were database changes, they should be applied automatically. Check the logs for migration messages.
+
+## Troubleshooting
+
+### View Specific Container Logs
+```bash
+# Backend logs
+docker compose --project-directory "$MD_DIR" logs mythicaldash_v3_backend
+
+# Database logs
+docker compose --project-directory "$MD_DIR" logs mythicaldash_v3_mysql
+
+# All logs
+docker compose --project-directory "$MD_DIR" logs
+```
+
+### Restart Individual Containers
+```bash
+# Restart specific container
+docker compose --project-directory "$MD_DIR" restart mythicaldash_v3_backend
+
+# Restart all containers
+docker compose --project-directory "$MD_DIR" restart
+```
+
+### Complete Reset (if needed)
+```bash
+docker compose --project-directory "$MD_DIR" down
+docker compose --project-directory "$MD_DIR" build --no-cache
+docker compose --project-directory "$MD_DIR" up -d
+```
+
+### Restore from Backup
+If you need to restore:
+
+```bash
+# Stop containers
+docker compose --project-directory "$MD_DIR" down
+
+# Restore files
+rm -rf "$MD_DIR"
+unzip /var/www/mythicaldash_backup.zip -d /var/www
+
+# Restore database (start database container first)
+docker compose --project-directory "$MD_DIR" up -d mythicaldash_v3_mysql
+# Wait for database to be ready, then:
+docker exec -i mythicaldash_v3_mysql mysql -u root -p mythicaldash_remastered < /var/www/mythicaldash_backup.sql
+
+# Start all containers
+docker compose --project-directory "$MD_DIR" up -d
+```
+
+## Post-Upgrade Maintenance
+
+### Update Container Images
+Occasionally update your base images:
+
+```bash
+docker compose --project-directory "$MD_DIR" pull
+docker compose --project-directory "$MD_DIR" up -d
+```
+
+### Clean Up Old Images
+Remove unused Docker images to save space:
+
+```bash
+docker image prune -f
+```
+
+## Done
+
+You are now running the latest version of MythicalDash with Docker! The upgrade process is complete.
+
+Your containers will automatically handle:
+- Database migrations
+- Dependency updates
+- Configuration changes
+- Service restarts
+

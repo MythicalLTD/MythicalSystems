@@ -1,0 +1,172 @@
+---
+title: Migrating from Pterodactyl to FeatherPanel
+id: migration
+pagination_next: null
+pagination_prev: null
+---
+
+# Migrating from Pterodactyl to FeatherPanel
+
+This guide will walk you through the process of migrating from Pterodactyl to FeatherPanel. The migration process allows you to transfer your existing Pterodactyl installation data to FeatherPanel while keeping your original installation intact.
+
+:::warning Backup First
+**Always create a backup of your Pterodactyl installation before starting the migration process!** This includes your database, configuration files, and any custom modifications you may have made.
+:::
+
+## Overview
+
+The migration process consists of the following steps:
+
+1. **Install FeatherPanel** on a new domain or the same domain
+2. **Access the Pterodactyl Importer** in FeatherPanel
+3. **Run the migration** using the built-in importer tool
+4. **Replace Wings with FeatherWings** on each node after migration completes
+
+## Step 1: Install FeatherPanel
+
+You can install FeatherPanel on either a new domain or the same domain as your existing Pterodactyl installation. Both options are supported and safe to use.
+
+### Option A: Install on a New Domain (Recommended)
+
+Installing FeatherPanel on a separate domain allows you to:
+- Test the migration without affecting your existing Pterodactyl installation
+- Keep both installations running simultaneously during testing
+- Safely switch over when you're ready
+
+### Option B: Install on the Same Domain
+
+You can also install FeatherPanel on the same domain if preferred. The migration tool will handle the process safely.
+
+Follow the standard FeatherPanel installation guide for your operating system to complete the installation:
+
+- [Installation Guide](/docs/featherpanel/welcome-featherpanel)
+
+Complete the FeatherPanel installation process and ensure it's running properly before proceeding to the next step.
+
+## Step 2: Access the Pterodactyl Importer
+
+Once FeatherPanel is installed and running:
+
+1. Log in to your FeatherPanel admin account
+2. Navigate to `/admin/pterodactyl-importer` in your browser
+3. You will see the migration interface with step-by-step instructions
+
+The importer page will guide you through the migration process with detailed instructions specific to your setup.
+
+## Step 3: Run the Migration
+
+Follow the instructions displayed on the Pterodactyl Importer page. The migration tool will:
+
+- Connect to your Pterodactyl database
+- Transfer all data including users, servers, nodes, and configurations
+- Handle all necessary data transformations
+- Provide progress updates during the migration
+
+:::info Migration Time
+The migration process may take some time depending on the size of your Pterodactyl installation. Larger installations with many users and servers will take longer to complete.
+:::
+
+Wait for the migration process to complete. When finished, the CLI will indicate that **FeatherPanel is ready**.
+
+## Step 4: Replace Wings with FeatherWings
+
+After the migration is complete and the CLI confirms that FeatherPanel is ready, you need to replace Wings with FeatherWings on each of your nodes.
+
+### On Each Wings Node
+
+Perform these steps on **each individual node** that was previously running Wings:
+
+#### 1. Stop and Disable Wings
+
+First, stop the Wings service and prevent it from starting automatically:
+
+```bash
+sudo systemctl stop wings
+sudo systemctl disable wings
+```
+
+#### 2. Install FeatherWings
+
+Install FeatherWings using the automated installation script:
+
+```bash
+curl -sSL https://get.featherpanel.com/beta.sh | bash
+```
+
+Alternatively, you can install FeatherWings manually by following the [FeatherWings installation guide](/docs/featherpanel/welcome-featherwings).
+
+#### 3. Get the Wings Configuration
+
+1. In your FeatherPanel, navigate to **Locations** in the sidebar
+2. Click on **Nodes**
+3. Find and click **Edit** on the node you're configuring
+4. Locate the **Wings Config** section
+5. Copy the configuration content shown
+
+#### 4. Configure FeatherWings
+
+Create the configuration file and paste the config you copied:
+
+```bash
+sudo nano /etc/featherpanel/config.yml
+```
+
+Paste the Wings configuration content you copied from the panel, then save and exit (Ctrl+X, then Y, then Enter).
+
+
+#### 5. Verify FeatherWings
+
+Verify that FeatherWings is running correctly:
+
+```bash
+sudo systemctl status featherwings
+```
+
+Repeat these steps for **each node** in your network.
+
+## Post-Migration Checklist
+
+After completing the migration:
+
+- [ ] All users can log in to FeatherPanel
+- [ ] All servers are visible and accessible
+- [ ] All nodes are configured and connected
+- [ ] FeatherWings is running on all nodes
+- [ ] Servers can start and stop properly
+- [ ] Test creating a new server to verify functionality
+- [ ] Verify that backups and file management work correctly
+
+## Troubleshooting
+
+### Migration Issues
+
+If you encounter issues during the migration:
+
+- Check the FeatherPanel logs for detailed error messages
+- Verify database connection credentials are correct
+- Ensure your Pterodactyl database is accessible from FeatherPanel
+- Check that all required permissions are set correctly
+
+### Node Connection Issues
+
+If nodes are not connecting properly:
+
+- Verify the Wings configuration was copied correctly
+- Check that FeatherWings service is running: `sudo systemctl status featherwings`
+- Review FeatherWings logs: `sudo journalctl -u featherwings -f`
+- Ensure firewall rules allow communication between panel and nodes
+- Verify SSL certificates are configured correctly if using HTTPS
+
+For additional help, refer to the [Discord](https://discord.mythical.systems) or seek support in the FeatherPanel community.
+
+## Next Steps
+
+Once your migration is complete and all nodes are running FeatherWings:
+
+1. Test all functionality thoroughly
+2. Notify your users about the migration (if applicable)
+3. Consider decommissioning your old Pterodactyl installation once you're confident everything is working
+4. Explore FeatherPanel's additional features and improvements
+
+Welcome to FeatherPanel!
+

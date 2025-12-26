@@ -1,0 +1,287 @@
+---
+id: 'install'
+title: 'Installation Guide'
+sidebar_label: 'Installation'
+---
+
+# Installation Guide
+
+MythicalDash is a powerful web-based control panel designed to run on your own server. This comprehensive guide will walk you through the complete installation process.
+
+> [!IMPORTANT]
+> **Before You Begin**
+> - Root access to your server is required
+> - Read through this entire guide before starting
+> - Estimated time: 30-45 minutes (manual) or 15-20 minutes (Docker)
+
+> [!TIP]
+> **First Time Installing?**
+> 
+> If you haven't chosen an installation method yet, visit the [installation method selection page](/docs/mythicaldash-v3-remastered/pick) to compare Docker vs Manual installation.
+
+---
+
+## Step 1: Install Prerequisites
+
+### Installing Composer
+
+Composer is PHP's dependency manager, essential for managing the panel's PHP packages.
+
+```bash title="Install Composer"
+curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
+```
+
+> [!NOTE]
+> **Docker Users**
+> 
+> If you're using the Docker installation method, you can skip to the [Docker-specific steps](#for-docker-installation-1). The Docker containers will handle the application setup automatically.
+
+---
+
+## Step 2: Download and Extract Files
+
+### For Manual Installation
+
+Create the installation directory and download the latest release:
+
+```bash title="Download MythicalDash"
+mkdir -p /var/www/mythicaldash-v3
+cd /var/www/mythicaldash-v3
+curl -Lo MythicalDash.zip https://github.com/MythicalLTD/MythicalDash/releases/latest/download/MythicalDash.zip
+unzip -o MythicalDash.zip -d /var/www/mythicaldash-v3
+```
+
+Set appropriate permissions for the application directories:
+
+```bash title="Set Permissions"
+chown -R www-data:www-data /var/www/mythicaldash-v3/*
+```
+
+### For Docker Installation
+
+If using Docker, follow these steps instead:
+
+```bash title="Download and Start Docker"
+mkdir -p /var/www/mythicaldash-v3
+cd /var/www/mythicaldash-v3
+curl -Lo MythicalDash.zip https://github.com/MythicalLTD/MythicalDash/releases/latest/download/MythicalDash.zip
+unzip -o MythicalDash.zip -d /var/www/mythicaldash-v3
+
+# Start Docker containers
+docker compose up -d
+
+# Wait for containers to initialize
+docker compose logs -f
+```
+
+---
+
+## Step 3: Install Dependencies
+
+Install all required PHP dependencies:
+
+```bash title="Install Dependencies"
+cd /var/www/mythicaldash-v3/backend
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader
+```
+
+---
+
+## Step 4: Configure Database
+
+### 4.1 Configure MariaDB Character Set
+
+Configure MariaDB with the correct character set settings:
+
+```bash title="Configure MariaDB"
+sudo sed -i '/^#collation-server/a collation-server = utf8mb4_general_ci' /etc/mysql/mariadb.conf.d/50-server.cnf
+sudo sed -i '/^character-set-server/s/^/#/g' /etc/mysql/mariadb.conf.d/50-server.cnf
+sudo sed -i '/^#character-set-server/a character-set-server = utf8mb4' /etc/mysql/mariadb.conf.d/50-server.cnf
+
+sudo sed -i '/^character-set-collations/s/^/#/g' /etc/mysql/mariadb.conf.d/50-server.cnf
+sudo sed -i '/^#character-set-collations/a character-set-collations = utf8mb4' /etc/mysql/mariadb.conf.d/50-server.cnf
+```
+
+### 4.2 Create Database and User
+
+Set up the database and create a user with appropriate permissions:
+
+```sql title="Database Setup"
+mariadb -u root -p
+CREATE USER 'mythicaldash_remastered'@'127.0.0.1' IDENTIFIED BY 'yourPassword';
+CREATE DATABASE mythicaldash_remastered;
+GRANT ALL PRIVILEGES ON mythicaldash_remastered.* TO 'mythicaldash_remastered'@'127.0.0.1' WITH GRANT OPTION;
+exit
+```
+
+> [!WARNING]
+> **Security Notice**
+> 
+> Make sure to replace `yourPassword` with a strong, unique password. Store this password securely as you'll need it for the next steps.
+
+---
+
+## Step 5: Configure Application
+
+### 5.1 Build the Application
+
+Build the application to ensure all dependencies are properly installed:
+
+```bash title="Build Application"
+cd /var/www/mythicaldash-v3
+# Set your app into production (Disables DEBUG LOGS)
+make set-prod
+```
+
+### 5.2 Set Up Cron Jobs
+
+Configure the required cron jobs for background processing and queue management:
+
+```bash title="Configure Cron Jobs"
+# Open crontab editor
+sudo crontab -e
+
+# Add these lines:
+* * * * * bash /var/www/mythicaldash-v3/backend/storage/cron/runner.bash >> /dev/null 2>&1
+* * * * * php /var/www/mythicaldash-v3/backend/storage/cron/runner.php >> /dev/null 2>&1
+```
+
+> [!IMPORTANT]
+> **Cron Jobs Are Required**
+> 
+> These cron jobs are essential for MythicalDash to function properly. They handle background tasks, queue processing, and scheduled operations.
+
+### 5.3 Configure Database Connection
+
+Configure the database connection settings:
+
+```bash title="Database Connection Setup"
+php mythicaldash setup
+```
+
+Follow the prompts to enter your database credentials.
+
+### 5.4 Run Database Migrations
+
+Apply the database migrations to set up the required tables and structure:
+
+```bash title="Run Migrations"
+php mythicaldash migrate
+```
+
+---
+
+## Step 6: Configure Pterodactyl Connection
+
+### For Manual Installation
+
+Configure the connection to your Pterodactyl panel:
+
+```bash title="Configure Pterodactyl"
+php mythicaldash pterodactyl configure
+```
+
+### For Docker Installation
+
+Configure the connection using Docker exec:
+
+```bash title="Configure Pterodactyl (Docker)"
+docker exec -it mythicaldash_v3_backend php cli pterodactyl configure
+```
+
+> [!TIP]
+> **Pterodactyl API Key**
+> 
+> You'll need an API key from your Pterodactyl panel with appropriate permissions. Make sure to have this ready before running the configuration command.
+
+---
+
+## Step 7: Set Up Reverse Proxy (Docker Only)
+
+If you're using the Docker installation, you'll need to set up a reverse proxy to access MythicalDash through port 4830.
+
+### Nginx Reverse Proxy
+
+Create or update your Nginx configuration file:
+
+```nginx title="/etc/nginx/sites-available/mythicaldash"
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:4830;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+Enable the configuration:
+
+```bash title="Enable Nginx Configuration"
+sudo ln -s /etc/nginx/sites-available/mythicaldash /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Apache Reverse Proxy
+
+If using Apache, ensure mod_proxy is enabled and add this to your virtual host:
+
+```apache title="/etc/apache2/sites-available/mythicaldash.conf"
+<VirtualHost *:80>
+    ServerName your-domain.com
+
+    ProxyPreserveHost On
+    ProxyPass / http://localhost:4830/
+    ProxyPassReverse / http://localhost:4830/
+
+    # WebSocket support
+    ProxyPass /ws/ ws://localhost:4830/ws/
+    ProxyPassReverse /ws/ ws://localhost:4830/ws/
+</VirtualHost>
+```
+
+Enable Apache modules and configuration:
+
+```bash title="Enable Apache Modules"
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+sudo a2enmod proxy_wstunnel
+sudo a2ensite mythicaldash
+sudo systemctl restart apache2
+```
+
+---
+
+## ✅ Installation Complete!
+
+Congratulations! You've successfully installed MythicalDash V3 Remastered.
+
+### Next Steps
+
+1. **[Configure Your Web Server](/docs/mythicaldash-v3-remastered/webserver)** - Set up Nginx or Apache
+2. **[Set Up SSL Certificates](/docs/mythicaldash-v3-remastered/createssl)** - Secure your installation with HTTPS
+3. **[Complete Setup](/docs/mythicaldash-v3-remastered/congratulations)** - Finalize your installation
+
+> [!TIP]
+> **Need Help?**
+> 
+> If you encounter any issues, check out our [troubleshooting guide](/docs/mythicaldash-v3-remastered/finish) or join our [Discord community](https://discord.mythical.systems) for support.
+
+---
+
+## 📚 Additional Resources
+
+- [Upgrade Guide](/docs/mythicaldash-v3-remastered/upgrade)
+- [Uninstall Guide](/docs/mythicaldash-v3-remastered/uninstall)
+- [Cloudflare Tunnels Setup](/docs/mythicaldash-v3-remastered/cloudflare-tunnels)

@@ -1,0 +1,39 @@
+---
+title: Uninstall MythicalDash
+id: 'uninstall'
+pagination_next: null
+pagination_prev: null
+---
+
+# Uninstall MythicalDash
+
+This guide will help you completely remove MythicalDash from your server.
+
+:::warning Data Loss Warning
+Uninstalling MythicalDash will permanently delete all data including:
+- User accounts and settings
+- Server configurations
+- Application databases
+- Log files
+
+**Create a backup before proceeding if you might want to restore later.**
+:::
+
+## Choose Your Installation Method
+
+Select the uninstall method that matches how you originally installed MythicalDash:
+
+### Manual Installation
+If you installed MythicalDash directly on your server without Docker, follow the manual uninstall guide.
+
+[Manual Uninstall Guide →](/docs/mythicaldash-v3-remastered/uninstall/manual)
+
+### Docker Installation
+If you installed MythicalDash using Docker Compose, follow the Docker uninstall guide.
+
+[Docker Uninstall Guide →](/docs/mythicaldash-v3-remastered/uninstall/docker)
+
+:::info Not Sure Which Method You Used?
+- If you have a `/var/www/mythicaldash-v3/docker-compose.yml` file, you used **Docker**
+- If you have PHP files directly on your server and use Nginx/Apache, you used **Manual** installation
+:::

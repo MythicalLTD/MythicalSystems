@@ -1,0 +1,207 @@
+---
+title: Finish Installation
+---
+
+# Final Steps & Troubleshooting
+
+You're almost done! This page covers the final configuration steps and common troubleshooting tips to ensure your MythicalDash installation is running smoothly.
+
+---
+
+## ✅ Final Configuration Checklist
+
+### 1. Verify Installation
+
+Check that all components are working correctly:
+
+```bash title="Check Application Status"
+cd /var/www/mythicaldash-v3
+php mythicaldash status
+```
+
+### 2. Test Pterodactyl Connection
+
+Verify that MythicalDash can communicate with your Pterodactyl panel:
+
+```bash title="Test Pterodactyl Connection"
+php mythicaldash pterodactyl test
+```
+
+> [!TIP]
+> **Connection Issues?**
+> 
+> If the connection test fails, double-check your Pterodactyl API key and panel URL in the configuration.
+
+### 3. Create Admin Account
+
+Create your first admin account through the web interface:
+
+1. Navigate to your MythicalDash URL
+2. Click "Register" or "Create Account"
+3. Fill in your details
+4. Verify your email (if email is configured)
+
+### 4. Configure Email (Optional)
+
+Set up email notifications for password resets and user notifications:
+
+```bash title="Configure Email"
+php mythicaldash email configure
+```
+
+---
+
+## 🔧 Common Issues & Solutions
+
+### Database Connection Errors
+
+**Problem:** "Could not connect to database"
+
+**Solutions:**
+- Verify database credentials in configuration
+- Ensure MariaDB service is running: `sudo systemctl status mariadb`
+- Check that the database user has proper permissions
+
+### Pterodactyl API Errors
+
+**Problem:** "Failed to connect to Pterodactyl panel"
+
+**Solutions:**
+- Verify API key has correct permissions
+- Check panel URL is correct (no trailing slash)
+- Ensure Pterodactyl panel is accessible from your server
+- Check firewall rules
+
+### Permission Issues
+
+**Problem:** "Permission denied" errors
+
+**Solutions:**
+```bash title="Fix Permissions"
+cd /var/www/mythicaldash-v3
+chown -R www-data:www-data *
+chmod -R 755 storage
+chmod -R 755 bootstrap/cache
+```
+
+### Cron Jobs Not Running
+
+**Problem:** Background tasks not executing
+
+**Solutions:**
+- Verify cron jobs are added: `sudo crontab -l`
+- Check cron logs: `grep CRON /var/log/syslog`
+- Ensure paths in crontab are correct
+
+### Web Server Issues
+
+**Problem:** 502 Bad Gateway or 404 errors
+
+**Solutions:**
+- Check web server configuration
+- Verify web server is running: `sudo systemctl status nginx` or `sudo systemctl status apache2`
+- Check error logs: `/var/log/nginx/error.log` or `/var/log/apache2/error.log`
+
+---
+
+## 🐛 Debugging Mode
+
+If you're experiencing issues, enable debug mode for more detailed error messages:
+
+```bash title="Enable Debug Mode"
+cd /var/www/mythicaldash-v3
+make set-dev
+```
+
+> [!WARNING]
+> **Production Warning**
+> 
+> Remember to disable debug mode in production environments as it can expose sensitive information:
+> ```bash
+> make set-prod
+> ```
+
+---
+
+## 📊 Performance Optimization
+
+### Enable Caching
+
+```bash title="Enable Application Cache"
+php mythicaldash cache:clear
+php mythicaldash config:cache
+php mythicaldash route:cache
+```
+
+### Database Optimization
+
+```bash title="Optimize Database"
+php mythicaldash db:optimize
+```
+
+### Monitor Resources
+
+Keep an eye on server resources:
+
+```bash title="Check Resource Usage"
+htop  # or top
+df -h  # Disk usage
+free -h  # Memory usage
+```
+
+---
+
+## 🔒 Security Hardening
+
+### Essential Security Steps
+
+1. **Enable Firewall**
+```bash title="Configure UFW"
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 22/tcp
+sudo ufw enable
+```
+
+2. **Set Up Fail2Ban** (Optional but recommended)
+```bash title="Install Fail2Ban"
+sudo apt install fail2ban
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+```
+
+3. **Regular Updates**
+```bash title="Keep System Updated"
+sudo apt update && sudo apt upgrade -y
+```
+
+> [!IMPORTANT]
+> **Security Best Practices**
+> 
+> - Always use HTTPS in production
+> - Keep your installation and dependencies updated
+> - Use strong, unique passwords
+> - Regularly backup your database
+> - Monitor access logs for suspicious activity
+
+---
+
+## 📚 Additional Resources
+
+### Documentation
+- [Installation Guide](/docs/mythicaldash-v3-remastered/install)
+- [Upgrade Guide](/docs/mythicaldash-v3-remastered/upgrade)
+- [Uninstall Guide](/docs/mythicaldash-v3-remastered/uninstall)
+
+### Community Support
+- [Discord Server](https://discord.mythical.systems) - Get help from the community
+- [GitHub Issues](https://github.com/mythicalltd/mythicaldash/issues) - Report bugs
+- [GitHub Discussions](https://github.com/mythicalltd/mythicaldash/discussions) - Ask questions
+
+---
+
+## ✨ You're All Set!
+
+Your MythicalDash installation is complete and optimized. If you encounter any issues not covered here, don't hesitate to reach out to our community for support.
+
+**[Back to Welcome Page →](/docs/mythicaldash-v3-remastered/welcome)**

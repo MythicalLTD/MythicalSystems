@@ -1,0 +1,9 @@
+{
+    "title": "FeatherEggs",
+    "description": "Game Server Eggs",
+    "icon": "Egg",
+    "root": true,
+    "pages": [
+        "install"
+    ]
+}

@@ -1,0 +1,87 @@
+---
+title: Installing FeatherPanel
+id: welcome-featherpanel
+pagination_next: null
+pagination_prev: null
+---
+
+# Installing FeatherPanel
+
+## Supported Systems
+
+The following is a list of supported operating systems. Please note that this is not an exhaustive list—there is a high probability that you can run FeatherPanel on other Linux distributions with minimal adjustments. You are responsible for determining which packages may be necessary on those systems. Newer releases of the supported OSes below are also likely to work, even if not explicitly listed.
+
+| Operating System                | Version  | Supported | Notes                                                         |
+|---------------------------------|----------|-----------|---------------------------------------------------------------|
+| **Ubuntu**                      | 20.04    | ✅        | Documentation assumes Ubuntu 20.04 as the base OS.            |
+|                                 | 22.04    | ✅        |                                                               |
+|                                 | 24.04    | ✅        |                                                               |
+| **RHEL / Rocky Linux / AlmaLinux** | 8        | ✅        |                                                               |
+|                                 | 9        | ✅        |                                                               |
+| **Debian**                      | 11       | ✅        |                                                               |
+|                                 | 12       | ✅        |                                                               |
+
+If your system is not listed above, you may still be able to install and run FeatherPanel by installing the required dependencies for your distribution.
+
+
+# System Requirements
+
+To run FeatherPanel, you will need a Linux system capable of running Docker containers. Most VPS and almost all dedicated servers should be capable of running Docker, but there are edge cases.
+
+When your provider uses Virtuozzo, OpenVZ (or OVZ), or LXC virtualization, you will most likely be unable to run FeatherPanel. Some providers have made the necessary changes for nested virtualization to support Docker. Ask your provider's support team to make sure. KVM is guaranteed to work.
+
+The easiest way to check is to type `systemd-detect-virt`. If the result doesn't contain OpenVZ or LXC, it should be fine. The result of `none` will appear when running dedicated hardware without any virtualization.
+
+Should that not work for some reason, or you're still unsure, you can also run the command below.
+
+```bash
+sudo dmidecode -s system-manufacturer
+```
+
+Example output:
+```
+VMware, Inc.
+```
+
+## Installing FeatherPanel (Beta)
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="warning" title="Beta Release">
+  FeatherPanel is currently in beta. Bugs or issues may exist. If you encounter any problems, please report them — we aim to resolve all reported issues within 1–3 days.
+</Callout>
+
+
+### Installation
+
+FeatherPanel now also supports Windows! Curious to try it out? This build is for testers and adventurous users.
+
+#### Linux
+
+**Install Beta Build:**
+
+```bash
+curl -sSL https://get.featherpanel.com/beta.sh | bash
+```
+
+#### Windows
+
+**PowerShell:**
+
+```powershell
+iwr https://get.featherpanel.com/beta.ps1 | iex
+```
+
+**Command Prompt (CMD):**
+
+```
+powershell -ExecutionPolicy Bypass -Command "iwr https://get.featherpanel.com/beta.ps1 | iex"
+```
+
+<Callout type="info" title="Exposing FeatherPanel on Windows">
+  If you want to access FeatherPanel remotely on Windows, consider using the <a href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/" target="_blank">Cloudflare Tunnel agent</a> to securely expose the FeatherPanel port over the internet or to your local network.  
+  <br /><br />
+  <strong>Note:</strong> We do <em>not</em> provide support for IIS, Apache2, or other Windows web servers for proxying or hosting FeatherPanel.
+</Callout>
+
+This will install the latest beta build of FeatherPanel on your system.

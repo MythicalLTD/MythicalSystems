@@ -1,0 +1,9 @@
+{
+    "title": "Development Guides",
+    "pages": [
+        "install",
+        "codebase",
+        "plugins",
+        "spells"
+    ]
+}

@@ -1,0 +1,1275 @@
+---
+id: plugin-events-reference
+title: Plugin Events Reference
+description: Complete reference guide for all FeatherPanel plugin events
+---
+
+# Plugin Events Reference
+
+This document provides a complete reference for all FeatherPanel plugin events, organized by category. Each event includes usage examples, data structures, and controller references.
+
+## How to Use Events
+
+### Basic Event Listener Syntax
+
+```php
+<?php
+
+namespace App\Addons\my_plugin;
+
+use App\Plugins\AppPlugin;
+use App\Plugins\PluginEvents;
+use App\Plugins\Events\Events\{AuthEvent, ServerEvent, TicketEvent};
+
+class MyPlugin implements AppPlugin
+{
+    public static function processEvents(PluginEvents $event): void
+    {
+        // Listen to an event using the event class method
+        $event->on(AuthEvent::onAuthLoginSuccess(), function ($data) {
+            // $data contains the event payload
+            $userInfo = $data['user_info'] ?? [];
+            error_log("User logged in: " . ($userInfo['email'] ?? 'unknown'));
+        });
+
+        // Events can pass multiple parameters
+        $event->on(ServerEvent::onServerCreated(), function ($serverId, $serverData, $createdBy) {
+            // Handle server creation
+        });
+    }
+
+    public static function pluginInstall(): void {}
+    public static function pluginUninstall(): void {}
+}
+```
+
+### Understanding Event Data
+
+Events pass data as an **associative array** or as **multiple parameters** depending on how the controller dispatches them. Check the callback documentation in each event class to understand the exact structure.
+
+**Example from controller:**
+```php
+// In DatabaseSnapshotsController.php
+$eventManager->emit(
+    DatabaseSnapshotsEvent::onSnapshotCreated(),
+    [
+        'filename' => $filename,
+        'size' => $size,
+        'user_uuid' => $currentUser['uuid'] ?? null,
+    ]
+);
+```
+
+**In your plugin:**
+```php
+$event->on(DatabaseSnapshotsEvent::onSnapshotCreated(), function ($data) {
+    $filename = $data['filename'];      // string
+    $size = $data['size'];              // int
+    $userUuid = $data['user_uuid'];    // string|null
+});
+```
+
+---
+
+## Authentication Events
+
+**Event Class:** `App\Plugins\Events\Events\AuthEvent`
+
+### `onAuthLoginSuccess()`
+
+**Event Name:** `featherpanel:auth:login:success`
+
+**Triggered When:** User successfully logs in
+
+**Data Structure:**
+```php
+[
+    'user_info' => [
+        'id' => int,
+        'uuid' => string,
+        'email' => string,
+        'username' => string,
+        // ... other user fields
+    ]
+]
+```
+
+**Example:**
+```php
+use App\Plugins\Events\Events\AuthEvent;
+
+$event->on(AuthEvent::onAuthLoginSuccess(), function ($data) {
+    $user = $data['user_info'];
+    
+    // Log login activity
+    error_log("User {$user['email']} logged in");
+    
+    // Send welcome notification
+    // ... your logic here
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/Auth/AuthController.php`
+
+---
+
+### `onAuthLoginFailed()`
+
+**Event Name:** `featherpanel:auth:login:failed`
+
+**Triggered When:** Login attempt fails
+
+**Data Structure:**
+```php
+[
+    'user_info' => array,  // User data if user exists
+    'reason' => string     // Failure reason
+]
+```
+
+**Example:**
+```php
+$event->on(AuthEvent::onAuthLoginFailed(), function ($data) {
+    // Log failed login attempt for security monitoring
+    $email = $data['user_info']['email'] ?? 'unknown';
+    $reason = $data['reason'] ?? 'unknown';
+    error_log("Failed login attempt for {$email}: {$reason}");
+});
+```
+
+---
+
+### `onAuthLogout()`
+
+**Event Name:** `featherpanel:auth:logout`
+
+**Triggered When:** User logs out
+
+**Data Structure:**
+```php
+['user_info' => array]
+```
+
+---
+
+### `onAuthRegisterSuccess()`
+
+**Event Name:** `featherpanel:auth:register:success`
+
+**Triggered When:** New user successfully registers
+
+**Data Structure:**
+```php
+['user_info' => array]
+```
+
+**Example:**
+```php
+$event->on(AuthEvent::onAuthRegisterSuccess(), function ($data) {
+    $user = $data['user_info'];
+    
+    // Send welcome email
+    // Create default settings
+    // Initialize user data
+});
+```
+
+---
+
+### `onAuthForgotPassword()`
+
+**Event Name:** `featherpanel:auth:forgot:password`
+
+**Triggered When:** User requests password reset
+
+**Data Structure:**
+```php
+[
+    'user_info' => array,
+    'reset_url' => string,
+    'reset_token' => string
+]
+```
+
+---
+
+### `onAuthResetPasswordSuccess()`
+
+**Event Name:** `featherpanel:auth:reset:password:success`
+
+**Triggered When:** Password reset completed successfully
+
+**Data Structure:**
+```php
+['user_info' => array]
+```
+
+---
+
+### `onAuth2FASetup()`, `onAuth2FAEnabled()`, `onAuth2FAVerified()`, `onAuth2FAFailed()`
+
+**Event Names:**
+- `featherpanel:auth:2fa:setup`
+- `featherpanel:auth:2fa:enabled`
+- `featherpanel:auth:2fa:verified`
+- `featherpanel:auth:2fa:failed`
+
+**Data Structure:** `['user_info' => array]`
+
+---
+
+### `onAuthPasswordChanged()`, `onAuthEmailChanged()`
+
+**Event Names:**
+- `featherpanel:auth:password:changed`
+- `featherpanel:auth:email:changed`
+
+**Data Structure:**
+- Password: `['user_info' => array]`
+- Email: `['user_info' => array, 'email' => string]`
+
+---
+
+### `onAuthAccountLocked()`, `onAuthAccountUnlocked()`
+
+**Event Names:**
+- `featherpanel:auth:account:locked`
+- `featherpanel:auth:account:unlocked`
+
+**Data Structure:** `['user_info' => array]`
+
+---
+
+## User Events
+
+**Event Class:** `App\Plugins\Events\Events\UserEvent`
+
+### `onUserCreated()`
+
+**Event Name:** `featherpanel:user:created`
+
+**Triggered When:** Admin creates a new user
+
+**Data Structure:**
+```php
+[
+    'user_data' => array,      // Complete user data
+    'user_id' => int,          // User ID
+    'created_by' => array      // Admin who created the user
+]
+```
+
+**Example:**
+```php
+use App\Plugins\Events\Events\UserEvent;
+
+$event->on(UserEvent::onUserCreated(), function ($data) {
+    $user = $data['user_data'];
+    $createdBy = $data['created_by'];
+    
+    // Send welcome email
+    // Initialize user settings
+    // Create default resources
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/UsersController.php`
+
+---
+
+### `onUserUpdated()`
+
+**Event Name:** `featherpanel:user:updated`
+
+**Data Structure:**
+```php
+[
+    'user_data' => array,
+    'updated_data' => array,    // Fields that were changed
+    'updated_by' => array
+]
+```
+
+---
+
+### `onUserDeleted()`
+
+**Event Name:** `featherpanel:user:deleted`
+
+**Data Structure:**
+```php
+[
+    'user_data' => array,
+    'deleted_by' => array
+]
+```
+
+---
+
+### `onUserApiKeyCreated()`, `onUserApiKeyUpdated()`, `onUserApiKeyDeleted()`
+
+**Event Names:**
+- `featherpanel:user:api:create`
+- `featherpanel:user:api:update`
+- `featherpanel:user:api:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'api_key_id' => string
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/UsersController.php` (API key methods)
+
+---
+
+### `onUserSshKeyCreated()`, `onUserSshKeyUpdated()`, `onUserSshKeyDeleted()`
+
+**Event Names:**
+- `featherpanel:user:ssh:create`
+- `featherpanel:user:ssh:update`
+- `featherpanel:user:ssh:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'ssh_key_id' => string
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/User/AccountController.php`
+
+---
+
+## Server Events
+
+**Event Class:** `App\Plugins\Events\Events\ServerEvent`
+
+### `onServerCreated()`
+
+**Event Name:** `featherpanel:server:created`
+
+**Triggered When:** New server is created
+
+**Data Structure:**
+```php
+[
+    'server_id' => int,
+    'server_data' => array,     // Complete server data
+    'created_by' => array       // User/admin who created it
+]
+```
+
+**Example:**
+```php
+use App\Plugins\Events\Events\ServerEvent;
+
+$event->on(ServerEvent::onServerCreated(), function ($data) {
+    $serverId = $data['server_id'];
+    $server = $data['server_data'];
+    
+    // Initialize plugin data for this server
+    // Create default configurations
+    // Send notifications
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/ServersController.php`
+
+---
+
+### `onServerUpdated()`
+
+**Event Name:** `featherpanel:server:update`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string
+]
+```
+
+---
+
+### `onServerDeleted()`
+
+**Event Name:** `featherpanel:server:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string
+]
+```
+
+---
+
+### `onServerSuspended()`, `onServerUnsuspended()`
+
+**Event Names:**
+- `featherpanel:server:suspended`
+- `featherpanel:server:unsuspended`
+
+**Data Structure:**
+```php
+[
+    'server_data' => array,
+    'suspended_by' => array,    // or 'unsuspended_by'
+]
+```
+
+---
+
+### `onServerTransferred()`, `onServerTransferInitiated()`, `onServerTransferCompleted()`, `onServerTransferFailed()`, `onServerTransferCancelled()`
+
+**Event Names:**
+- `featherpanel:server:transferred`
+- `featherpanel:server:transfer:initiated`
+- `featherpanel:server:transfer:completed`
+- `featherpanel:server:transfer:failed`
+- `featherpanel:server:transfer:cancelled`
+
+**Data Structure:** Varies by event - includes server data, node information, and transfer status.
+
+---
+
+### `onServerPowerAction()`
+
+**Event Name:** `featherpanel:server:power:action`
+
+**Triggered When:** Server power action executed (start, stop, restart, kill)
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string,
+    'action' => string          // 'start', 'stop', 'restart', 'kill'
+]
+```
+
+**Example:**
+```php
+$event->on(ServerEvent::onServerPowerAction(), function ($data) {
+    $action = $data['action'];
+    $serverUuid = $data['server_uuid'];
+    
+    // Log power actions
+    // Update monitoring systems
+    // Send notifications for critical actions
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/User/Server/Power/ServerPowerController.php`
+
+---
+
+### Server File Events
+
+#### `onServerFilesDeleted()`, `onServerDirectoryCreated()`, `onServerFileWritten()`, `onServerFileRenamed()`, `onServerFilesCopied()`, `onServerFileCompressed()`, `onServerFileDecompressed()`, `onServerFilePermissionsChanged()`, `onServerFileUploaded()`
+
+**Event Names:**
+- `featherpanel:server:files:delete`
+- `featherpanel:server:directory:create`
+- `featherpanel:server:file:write`
+- `featherpanel:server:file:rename`
+- `featherpanel:server:files:copy`
+- `featherpanel:server:file:compress`
+- `featherpanel:server:file:decompress`
+- `featherpanel:server:file:permissions`
+- `featherpanel:server:file:upload`
+
+**Data Structure:** Includes `user_uuid`, `server_uuid`, and file/directory paths.
+
+**Controller Reference:** `backend/app/Controllers/User/Server/Files/ServerFilesController.php`
+
+---
+
+### Server Resource Events
+
+#### `onServerAllocationCreated()`, `onServerAllocationUpdated()`, `onServerAllocationDeleted()`
+
+**Event Names:**
+- `featherpanel:server:allocation:create`
+- `featherpanel:server:allocation:update`
+- `featherpanel:server:allocation:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string,
+    'allocation_id' => int
+]
+```
+
+---
+
+#### `onServerDatabaseCreated()`, `onServerDatabaseUpdated()`, `onServerDatabaseDeleted()`
+
+**Event Names:**
+- `featherpanel:server:database:create`
+- `featherpanel:server:database:update`
+- `featherpanel:server:database:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string,
+    'database_id' => int
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/User/Server/Databases/ServerDatabasesController.php`
+
+---
+
+#### `onServerBackupCreated()`, `onServerBackupRestored()`, `onServerBackupLocked()`, `onServerBackupUnlocked()`, `onServerBackupDeleted()`
+
+**Event Names:**
+- `featherpanel:server:backup:create`
+- `featherpanel:server:backup:restore`
+- `featherpanel:server:backup:lock`
+- `featherpanel:server:backup:unlock`
+- `featherpanel:server:backup:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string,
+    'backup_uuid' => string
+]
+```
+
+---
+
+#### `onServerScheduleCreated()`, `onServerScheduleUpdated()`, `onServerScheduleStatusToggled()`, `onServerScheduleDeleted()`
+
+**Event Names:**
+- `featherpanel:server:schedule:create`
+- `featherpanel:server:schedule:update`
+- `featherpanel:server:schedule:status:toggle`
+- `featherpanel:server:schedule:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string,
+    'schedule_id' => int
+]
+```
+
+---
+
+#### `onServerTaskCreated()`, `onServerTaskUpdated()`, `onServerTaskSequenceUpdated()`, `onServerTaskStatusToggled()`, `onServerTaskDeleted()`
+
+**Event Names:**
+- `featherpanel:server:task:create`
+- `featherpanel:server:task:update`
+- `featherpanel:server:task:sequence:update`
+- `featherpanel:server:task:status:toggle`
+- `featherpanel:server:task:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string,
+    'schedule_id' => int,
+    'task_id' => int
+]
+```
+
+---
+
+#### `onServerSubuserCreated()`, `onServerSubuserUpdated()`, `onServerSubuserDeleted()`
+
+**Event Names:**
+- `featherpanel:server:subuser:create`
+- `featherpanel:server:subuser:update`
+- `featherpanel:server:subuser:delete`
+
+**Data Structure:**
+```php
+[
+    'user_uuid' => string,
+    'server_uuid' => string,
+    'subuser_id' => int
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/User/Server/ServerSubusersController.php`
+
+---
+
+## Ticket Events
+
+**Event Class:** `App\Plugins\Events\Events\TicketEvent`
+
+### `onTicketCreated()`
+
+**Event Name:** `featherpanel:ticket:created`
+
+**Triggered When:** New ticket is created
+
+**Data Structure:**
+```php
+[
+    'ticket' => array,          // Complete ticket data
+    'ticket_id' => int,
+    'user_uuid' => string
+]
+```
+
+**Example:**
+```php
+use App\Plugins\Events\Events\TicketEvent;
+
+$event->on(TicketEvent::onTicketCreated(), function ($data) {
+    $ticket = $data['ticket'];
+    $ticketId = $data['ticket_id'];
+    
+    // Send notification to support team
+    // Create ticket tracking entry
+    // Update statistics
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/User/TicketsController.php`
+
+---
+
+### `onTicketUpdated()`, `onTicketDeleted()`
+
+**Event Names:**
+- `featherpanel:ticket:updated`
+- `featherpanel:ticket:deleted`
+
+**Data Structure:**
+- Updated: `['ticket' => array, 'updated_data' => array, 'user_uuid' => string]`
+- Deleted: `['ticket' => array, 'user_uuid' => string]`
+
+---
+
+### `onTicketMessageCreated()`, `onTicketMessageUpdated()`, `onTicketMessageDeleted()`
+
+**Event Names:**
+- `featherpanel:ticket:message:created`
+- `featherpanel:ticket:message:updated`
+- `featherpanel:ticket:message:deleted`
+
+**Data Structure:**
+```php
+[
+    'ticket' => array,
+    'message' => array,         // Message data
+    'message_id' => int,
+    'user_uuid' => string
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/TicketMessagesController.php`
+
+**Example:**
+```php
+$event->on(TicketEvent::onTicketMessageCreated(), function ($data) {
+    $ticket = $data['ticket'];
+    $message = $data['message'];
+    
+    // Send email notification to ticket participants
+    // Update ticket last activity timestamp
+    // Log message activity
+});
+```
+
+---
+
+### `onTicketAttachmentCreated()`, `onTicketAttachmentUpdated()`, `onTicketAttachmentDeleted()`
+
+**Event Names:**
+- `featherpanel:ticket:attachment:created`
+- `featherpanel:ticket:attachment:updated`
+- `featherpanel:ticket:attachment:deleted`
+
+**Data Structure:**
+```php
+[
+    'ticket' => array,
+    'attachment' => array,
+    'attachment_id' => int,
+    'user_uuid' => string
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/TicketAttachmentsController.php`
+
+---
+
+### `onTicketStatusChanged()`, `onTicketClosed()`, `onTicketReopened()`
+
+**Event Names:**
+- `featherpanel:ticket:status:changed`
+- `featherpanel:ticket:closed`
+- `featherpanel:ticket:reopened`
+
+**Data Structure:**
+- Status Changed: `['ticket' => array, 'old_status' => string, 'new_status' => string, 'user_uuid' => string]`
+- Closed/Reopened: `['ticket' => array, 'user_uuid' => string]`
+
+---
+
+### Ticket Management Events
+
+#### `onTicketCategoryCreated()`, `onTicketCategoryUpdated()`, `onTicketCategoryDeleted()`
+
+**Event Names:**
+- `featherpanel:ticket:category:created`
+- `featherpanel:ticket:category:updated`
+- `featherpanel:ticket:category:deleted`
+
+**Data Structure:**
+```php
+[
+    'category' => array,
+    'category_id' => int,
+    'user_uuid' => string
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/TicketCategoriesController.php`
+
+---
+
+#### `onTicketStatusCreated()`, `onTicketStatusUpdated()`, `onTicketStatusDeleted()`
+
+**Event Names:**
+- `featherpanel:ticket:status:created`
+- `featherpanel:ticket:status:updated`
+- `featherpanel:ticket:status:deleted`
+
+**Data Structure:**
+```php
+[
+    'status' => array,
+    'status_id' => int,
+    'user_uuid' => string
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/TicketStatusesController.php`
+
+---
+
+#### `onTicketPriorityCreated()`, `onTicketPriorityUpdated()`, `onTicketPriorityDeleted()`
+
+**Event Names:**
+- `featherpanel:ticket:priority:created`
+- `featherpanel:ticket:priority:updated`
+- `featherpanel:ticket:priority:deleted`
+
+**Data Structure:**
+```php
+[
+    'priority' => array,
+    'priority_id' => int,
+    'user_uuid' => string
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/TicketPrioritiesController.php`
+
+---
+
+## Database Snapshots Events
+
+**Event Class:** `App\Plugins\Events\Events\DatabaseSnapshotsEvent`
+
+### `onSnapshotCreated()`
+
+**Event Name:** `featherpanel:database:snapshot:created`
+
+**Triggered When:** Database snapshot is created
+
+**Data Structure:**
+```php
+[
+    'filename' => string,
+    'size' => int,              // Size in bytes
+    'user_uuid' => string|null
+]
+```
+
+**Example:**
+```php
+use App\Plugins\Events\Events\DatabaseSnapshotsEvent;
+
+$event->on(DatabaseSnapshotsEvent::onSnapshotCreated(), function ($data) {
+    $filename = $data['filename'];
+    $size = $data['size'];
+    
+    // Log snapshot creation
+    // Update backup statistics
+    // Send notification if size exceeds threshold
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/DatabaseSnapshotsController.php`
+
+---
+
+### `onSnapshotRestored()`, `onSnapshotDeleted()`, `onSnapshotDownloaded()`
+
+**Event Names:**
+- `featherpanel:database:snapshot:restored`
+- `featherpanel:database:snapshot:deleted`
+- `featherpanel:database:snapshot:downloaded`
+
+**Data Structure:**
+```php
+[
+    'filename' => string,
+    'user_uuid' => string|null
+]
+```
+
+---
+
+## Cloud Plugins Events
+
+**Event Class:** `App\Plugins\Events\Events\CloudPluginsEvent`
+
+### `onPluginInstalled()`
+
+**Event Name:** `featherpanel:cloud:plugin:installed`
+
+**Triggered When:** Plugin is installed from cloud marketplace
+
+**Data Structure:**
+```php
+[
+    'identifier' => string,
+    'plugin_data' => array,     // Plugin metadata
+    'user_uuid' => string|null
+]
+```
+
+**Example:**
+```php
+use App\Plugins\Events\Events\CloudPluginsEvent;
+
+$event->on(CloudPluginsEvent::onPluginInstalled(), function ($data) {
+    $identifier = $data['identifier'];
+    $pluginData = $data['plugin_data'];
+    
+    // Track plugin installations
+    // Send analytics
+    // Initialize plugin-specific integrations
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/CloudPluginsController.php`
+
+---
+
+### `onPluginUninstalled()`
+
+**Event Name:** `featherpanel:cloud:plugin:uninstalled`
+
+**Data Structure:**
+```php
+[
+    'identifier' => string,
+    'user_uuid' => string|null
+]
+```
+
+---
+
+## Knowledgebase Events
+
+**Event Class:** `App\Plugins\Events\Events\KnowledgebaseEvent`
+
+### Category Events
+
+#### `onKnowledgebaseCategoryCreated()`, `onKnowledgebaseCategoryUpdated()`, `onKnowledgebaseCategoryDeleted()`
+
+**Event Names:**
+- `featherpanel:admin:knowledgebase:category:created`
+- `featherpanel:admin:knowledgebase:category:updated`
+- `featherpanel:admin:knowledgebase:category:deleted`
+
+**Data Structure:**
+```php
+[
+    'category' => array,
+    'created_by' => array       // or 'updated_by', 'deleted_by'
+]
+```
+
+**Controller Reference:** `backend/app/Controllers/Admin/KnowledgebaseController.php`
+
+---
+
+### Article Events
+
+#### `onKnowledgebaseArticleCreated()`, `onKnowledgebaseArticleUpdated()`, `onKnowledgebaseArticleDeleted()`
+
+**Event Names:**
+- `featherpanel:admin:knowledgebase:article:created`
+- `featherpanel:admin:knowledgebase:article:updated`
+- `featherpanel:admin:knowledgebase:article:deleted`
+
+**Data Structure:**
+```php
+[
+    'article' => array,
+    'created_by' => array       // or 'updated_by', 'deleted_by'
+]
+```
+
+---
+
+### Attachment Events
+
+#### `onKnowledgebaseAttachmentUploaded()`, `onKnowledgebaseAttachmentDeleted()`
+
+**Event Names:**
+- `featherpanel:admin:knowledgebase:attachment:uploaded`
+- `featherpanel:admin:knowledgebase:attachment:deleted`
+
+**Data Structure:**
+```php
+[
+    'article' => array,
+    'attachment' => array,
+    'uploaded_by' => array      // or 'deleted_by'
+]
+```
+
+---
+
+## Wings Events
+
+**Event Class:** `App\Plugins\Events\Events\WingsEvent`
+
+### Node Events
+
+#### `onWingsNodeUtilizationRetrieved()`, `onWingsDockerDiskUsageRetrieved()`, `onWingsDockerPruneCompleted()`, `onWingsNodeIpsRetrieved()`, `onWingsNodeSystemInfoRetrieved()`
+
+**Event Names:**
+- `featherpanel:wings:node:utilization:retrieved`
+- `featherpanel:wings:docker:disk:usage:retrieved`
+- `featherpanel:wings:docker:prune:completed`
+- `featherpanel:wings:node:ips:retrieved`
+- `featherpanel:wings:node:system:info:retrieved`
+
+**Data Structure:** Includes `node_id` and relevant data arrays.
+
+---
+
+### Server Events
+
+#### `onWingsServerInfoRetrieved()`, `onWingsServerInstallRetrieved()`, `onWingsServerInstallCompleted()`, `onWingsServerStatusUpdated()`, `onWingsServerStatusRetrieved()`
+
+**Event Names:**
+- `featherpanel:wings:server:info:retrieved`
+- `featherpanel:wings:server:install:retrieved`
+- `featherpanel:wings:server:install:completed`
+- `featherpanel:wings:server:status:updated`
+- `featherpanel:wings:server:status:retrieved`
+
+**Data Structure:** Includes `server_uuid` and server data arrays.
+
+---
+
+### Activity Events
+
+#### `onWingsActivityLogged()`
+
+**Event Name:** `featherpanel:wings:activity:logged`
+
+**Triggered When:** Wings logs server activity
+
+**Data Structure:**
+```php
+[
+    'node' => array,
+    'activities' => array,
+    'processed_count' => int,
+    'error_count' => int,
+    'errors' => array
+]
+```
+
+**Example:**
+```php
+use App\Plugins\Events\Events\WingsEvent;
+
+$event->on(WingsEvent::onWingsActivityLogged(), function ($data) {
+    $activities = $data['activities'];
+    $node = $data['node'];
+    
+    // Process activity logs
+    // Update monitoring systems
+    // Alert on suspicious activities
+});
+```
+
+**Controller Reference:** `backend/app/Controllers/Wings/Activity/WingsActivityController.php`
+
+---
+
+## Additional Event Categories
+
+### Nodes Events
+
+**Event Class:** `App\Plugins\Events\Events\NodesEvent`
+
+- `onNodeCreated()`, `onNodeUpdated()`, `onNodeDeleted()`, `onNodeKeyReset()`
+- `onNodesError()`, `onNodeNotFound()`, `onNodeConnectionError()`
+
+**Controller Reference:** `backend/app/Controllers/Admin/NodesController.php`
+
+---
+
+### Spells Events
+
+**Event Class:** `App\Plugins\Events\Events\SpellsEvent`
+
+- `onSpellCreated()`, `onSpellUpdated()`, `onSpellDeleted()`
+- `onSpellVariableCreated()`, `onSpellVariableUpdated()`, `onSpellVariableDeleted()`
+- `onSpellsImported()`, `onSpellExported()`
+
+**Controller Reference:** `backend/app/Controllers/Admin/SpellsController.php`
+
+---
+
+### Subdomains Events
+
+**Event Class:** `App\Plugins\Events\Events\SubdomainsEvent`
+
+- `onSubdomainDomainCreated()`, `onSubdomainDomainUpdated()`, `onSubdomainDomainDeleted()`
+- `onSubdomainCreated()`, `onSubdomainDeleted()`
+- `onSubdomainSettingsUpdated()`
+
+**Controller Reference:** `backend/app/Controllers/Admin/SubdomainsController.php`
+
+---
+
+### Roles & Permissions Events
+
+**Event Classes:**
+- `App\Plugins\Events\Events\RolesEvent`
+- `App\Plugins\Events\Events\PermissionsEvent`
+
+- `onRoleCreated()`, `onRoleUpdated()`, `onRoleDeleted()`
+- `onPermissionCreated()`, `onPermissionUpdated()`, `onPermissionDeleted()`
+
+**Controller Reference:** `backend/app/Controllers/Admin/RolesController.php`
+
+---
+
+### Settings Events
+
+**Event Class:** `App\Plugins\Events\Events\SettingsEvent`
+
+- `onSettingUpdated()`
+- Various setting-specific events
+
+**Controller Reference:** `backend/app/Controllers/Admin/SettingsController.php`
+
+---
+
+### Plugin Manager Events
+
+**Event Class:** `App\Plugins\Events\Events\PluginManagerEvent`
+
+- `onPluginSettingsUpdated()`
+- `onPluginFileCreated()`
+
+**Controller Reference:** `backend/app/Controllers/Admin/PluginManagerController.php`
+
+---
+
+## Complete Example: Multi-Event Plugin
+
+```php
+<?php
+
+namespace App\Addons\activity_monitor;
+
+use App\Plugins\AppPlugin;
+use App\Plugins\PluginEvents;
+use App\Plugins\Events\Events\{
+    AuthEvent,
+    ServerEvent,
+    TicketEvent,
+    UserEvent
+};
+
+class ActivityMonitor implements AppPlugin
+{
+    public static function processEvents(PluginEvents $event): void
+    {
+        // Monitor user authentication
+        $event->on(AuthEvent::onAuthLoginSuccess(), function ($data) {
+            self::logActivity('user_login', [
+                'user_email' => $data['user_info']['email'] ?? 'unknown',
+                'timestamp' => time()
+            ]);
+        });
+
+        $event->on(AuthEvent::onAuthLoginFailed(), function ($data) {
+            self::logActivity('user_login_failed', [
+                'email' => $data['user_info']['email'] ?? 'unknown',
+                'reason' => $data['reason'] ?? 'unknown'
+            ]);
+        });
+
+        // Monitor server operations
+        $event->on(ServerEvent::onServerCreated(), function ($data) {
+            self::logActivity('server_created', [
+                'server_id' => $data['server_id'],
+                'created_by' => $data['created_by']['email'] ?? 'unknown'
+            ]);
+        });
+
+        $event->on(ServerEvent::onServerPowerAction(), function ($data) {
+            self::logActivity('server_power_action', [
+                'server_uuid' => $data['server_uuid'],
+                'action' => $data['action'],
+                'user_uuid' => $data['user_uuid']
+            ]);
+        });
+
+        // Monitor ticket system
+        $event->on(TicketEvent::onTicketCreated(), function ($data) {
+            self::logActivity('ticket_created', [
+                'ticket_id' => $data['ticket_id'],
+                'user_uuid' => $data['user_uuid']
+            ]);
+        });
+
+        $event->on(TicketEvent::onTicketMessageCreated(), function ($data) {
+            self::logActivity('ticket_message', [
+                'ticket_id' => $data['ticket']['id'] ?? null,
+                'message_id' => $data['message_id']
+            ]);
+        });
+
+        // Monitor user management
+        $event->on(UserEvent::onUserCreated(), function ($data) {
+            self::logActivity('user_created', [
+                'user_id' => $data['user_id'],
+                'created_by' => $data['created_by']['email'] ?? 'system'
+            ]);
+        });
+    }
+
+    private static function logActivity(string $type, array $data): void
+    {
+        // Your logging implementation
+        error_log("ActivityMonitor: {$type} - " . json_encode($data));
+        
+        // Could also write to database, send to external service, etc.
+    }
+
+    public static function pluginInstall(): void
+    {
+        // Create activity log table
+    }
+
+    public static function pluginUninstall(): void
+    {
+        // Cleanup
+    }
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Always Validate Event Data
+
+```php
+$event->on(ServerEvent::onServerCreated(), function ($data) {
+    if (!isset($data['server_id']) || !isset($data['server_data'])) {
+        error_log("Invalid server creation event data");
+        return;
+    }
+    
+    // Process valid data
+});
+```
+
+### 2. Handle Errors Gracefully
+
+```php
+$event->on(AuthEvent::onAuthLoginSuccess(), function ($data) {
+    try {
+        // Your logic here
+    } catch (\Exception $e) {
+        error_log("Plugin error: " . $e->getMessage());
+        // Don't break the system
+    }
+});
+```
+
+### 3. Use Type Hints When Possible
+
+```php
+$event->on(DatabaseSnapshotsEvent::onSnapshotCreated(), function (array $data): void {
+    $filename = $data['filename'] ?? '';
+    $size = $data['size'] ?? 0;
+    // ...
+});
+```
+
+### 4. Document Your Event Handlers
+
+```php
+/**
+ * Handles server creation events
+ * 
+ * @param array $data Event data containing:
+ *   - server_id: int
+ *   - server_data: array
+ *   - created_by: array
+ */
+$event->on(ServerEvent::onServerCreated(), function (array $data): void {
+    // Implementation
+});
+```
+
+---
+
+## Finding Event Implementations
+
+To see how events are dispatched in controllers:
+
+1. **Search for event class usage:**
+   ```bash
+   grep -r "Event::on" backend/app/Controllers/
+   ```
+
+2. **Check specific controller files** referenced in each event section
+
+3. **Look at the event class file** in `backend/app/Plugins/Events/Events/` for callback documentation
+
+---
+
+## Related Documentation
+
+- **[Plugin Events & Hooks](./events)** - General event system overview
+- **[Plugin Development](./development)** - Creating plugins
+- **[Plugin Examples](./examples)** - Complete plugin examples
+

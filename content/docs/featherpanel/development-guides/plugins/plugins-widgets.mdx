@@ -1,0 +1,826 @@
+---
+id: plugins-widgets
+title: Plugin Widgets
+description: Creating and managing widgets to extend FeatherPanel pages with custom content
+---
+
+# Plugin Widgets
+
+Plugin widgets allow you to inject custom HTML content into existing FeatherPanel pages at specific locations. Unlike plugin pages (which create entirely new routes), widgets integrate seamlessly into the panel's existing interface, enabling you to enhance functionality without creating separate pages.
+
+## What Are Widgets?
+
+Widgets are HTML components that can be embedded into FeatherPanel's native pages at predefined locations. They're perfect for:
+
+-   **Information displays** - Show additional server metrics, user statistics, or custom data
+-   **Quick actions** - Add buttons or shortcuts for common operations
+-   **Notifications** - Display important alerts or messages
+-   **Charts and graphs** - Visualize data on dashboard or server pages
+-   **Integration panels** - Display content from external services
+
+Widgets automatically receive context information (like server UUID or user UUID) and can make API calls to your plugin's backend endpoints.
+
+## Widget vs. Plugin Pages
+
+| Feature         | Widgets                              | Plugin Pages                 |
+| --------------- | ------------------------------------ | ---------------------------- |
+| **Integration** | Embedded in existing pages           | Standalone pages with routes |
+| **Location**    | Predefined locations on native pages | Custom routes via sidebar    |
+| **Use Case**    | Enhance existing functionality       | Create new interfaces        |
+| **Navigation**  | No navigation needed                 | Requires sidebar entry       |
+| **Context**     | Automatic (server/user UUID)         | URL query parameters         |
+
+Use **widgets** when you want to add content to existing pages. Use **plugin pages** when you need a dedicated interface for your plugin.
+
+## Creating Widgets
+
+### File Structure
+
+Widgets are HTML files stored in the `Frontend/Components/` directory, alongside plugin pages:
+
+```
+storage/addons/my_plugin/
+├── Frontend/
+│   ├── index.js              # Plugin JavaScript initialization
+│   ├── index.css             # Plugin styles
+│   ├── sidebar.json          # Sidebar configuration (for pages)
+│   └── Components/           # Components directory
+│       ├── main-page.html    # Plugin page (if using pages)
+│       └── server-console-widget.html  # Widget component
+```
+
+### Widget Configuration
+
+Widgets are configured using JSON files. Create a `widgets.json` file in your plugin's `Frontend/` directory:
+
+```json
+{
+    "id": "my-plugin-server-info",
+    "component": "server-console-widget.html",
+    "enabled": true,
+    "priority": 100,
+    "page": "server-console",
+    "location": "under-server-info-cards",
+    "size": "full"
+}
+```
+
+#### Configuration Properties
+
+-   **`id`** (required): Unique identifier for the widget within your plugin
+-   **`component`** (required): Path to HTML file in `Components/` directory (e.g., `"widget.html"`)
+-   **`page`** (required): Target page identifier (see [Supported Pages](#supported-pages))
+-   **`location`** (required): Widget placement location (see location sections below)
+-   **`enabled`** (optional): Enable or disable the widget (default: `true`)
+-   **`priority`** (optional): Rendering order - higher values render first (default: `100`)
+-   **`size`** (optional): Widget width - `"full"`, `"half"`, `"third"`, or `"quarter"` (default: `"full"`)
+
+#### Multiple Widgets
+
+You can define multiple widgets in a single array:
+
+```json
+[
+    {
+        "id": "widget-1",
+        "component": "widget1.html",
+        "page": "server-console",
+        "location": "under-server-info-cards",
+        "size": "half",
+        "priority": 100
+    },
+    {
+        "id": "widget-2",
+        "component": "widget2.html",
+        "page": "server-console",
+        "location": "under-server-info-cards",
+        "size": "half",
+        "priority": 90
+    }
+]
+```
+
+### Widget Sizing
+
+Widgets support flexible sizing to create responsive layouts:
+
+-   **`"full"`** - Full width widget (default)
+
+    -   Best for: Info cards, charts, tables, forms
+    -   Renders: 1 widget per row
+
+-   **`"half"`** - Half width widget
+
+    -   Best for: Side-by-side information displays
+    -   Renders: 2 widgets per row on desktop
+
+-   **`"third"`** - One-third width widget
+
+    -   Best for: Statistics cards, small charts
+    -   Renders: 3 widgets per row on desktop
+
+-   **`"quarter"`** - One-quarter width widget
+    -   Best for: Quick stats, icons with labels
+    -   Renders: 4 widgets per row on desktop
+
+**Note:** All widgets automatically stack vertically on mobile screens for optimal mobile experience.
+
+### Creating Widget HTML
+
+Widget HTML files follow the same structure as plugin pages, but are typically more focused since they're embedded in existing pages:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Server Info Widget</title>
+        <style>
+            .widget-container {
+                background: rgba(18, 19, 21, 0.8);
+                border-radius: 0.75rem;
+                padding: 1.5rem;
+                border: 1px solid rgba(255, 255, 255, 0.07);
+                margin-bottom: 1rem;
+            }
+
+            .widget-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                margin-bottom: 0.75rem;
+                color: #fafafa;
+            }
+
+            .widget-content {
+                color: #e5e5e5;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="widget-container">
+            <h3 class="widget-title">Custom Server Information</h3>
+            <div class="widget-content" id="widget-content">
+                <p>Loading server information...</p>
+            </div>
+        </div>
+
+        <script>
+            // Widgets automatically receive context
+            // Access via window.FeatherPanel.widgetContext or data attributes
+
+            async function loadWidgetData() {
+                // Get server UUID from context (automatically provided)
+                const serverUuid = window.FeatherPanel?.widgetContext?.serverUuid;
+
+                if (!serverUuid) {
+                    document.getElementById('widget-content').innerHTML = '<p>No server context available</p>';
+                    return;
+                }
+
+                try {
+                    // Make API call to your plugin endpoint
+                    const response = await fetch(`/api/user/servers/${serverUuid}/addons/my_plugin/data`);
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Update widget content
+                        document.getElementById(
+                            'widget-content'
+                        ).innerHTML = `<p>Custom data: ${result.data.message}</p>`;
+                    }
+                } catch (error) {
+                    console.error('Failed to load widget data:', error);
+                    document.getElementById('widget-content').innerHTML = '<p>Error loading data</p>';
+                }
+            }
+
+            // Initialize widget when loaded
+            window.addEventListener('DOMContentLoaded', loadWidgetData);
+        </script>
+    </body>
+</html>
+```
+
+### Widget Context
+
+Widgets automatically receive context information based on the page they're displayed on:
+
+#### Available Context Variables
+
+-   **`userUuid`** - Current user's UUID (available on all pages)
+-   **`serverUuid`** - Current server's UUID (available on server pages only)
+
+These are accessible through `window.FeatherPanel.widgetContext`:
+
+```javascript
+const context = window.FeatherPanel?.widgetContext || {};
+const userUuid = context.userUuid;
+const serverUuid = context.serverUuid;
+
+if (serverUuid) {
+    // Make server-specific API call
+    fetch(`/api/user/servers/${serverUuid}/addons/my_plugin/data`);
+}
+```
+
+## Supported Pages
+
+Widgets can be added to the following FeatherPanel pages:
+
+### User Pages
+
+-   **`dashboard`** - Main dashboard/home page
+-   **`account`** - Account page with multiple tabs
+-   **`auth-login`** - Login page
+-   **`auth-register`** - Registration page
+-   **`auth-forgot-password`** - Password recovery page
+-   **`auth-reset-password`** - Password reset page
+-   **`auth-setup-two-factor`** - Two-factor authentication setup
+-   **`auth-verify-two-factor`** - Two-factor authentication verification
+-   **`auth-logout`** - Logout page
+-   **`error-403`** - 403 Forbidden error page
+-   **`error-404`** - 404 Not Found error page
+-   **`error-500`** - 500 Server Error page
+-   **`redirect`** - Redirect page
+
+### Server Pages
+
+-   **`server-console`** - Server console and terminal
+-   **`server-activities`** - Server activity logs
+-   **`server-allocations`** - Server network allocations
+-   **`server-backups`** - Server backups management
+-   **`server-databases`** - Server databases
+-   **`server-file-editor`** - File editor page
+-   **`server-files`** - File manager page
+-   **`server-logs`** - Server logs viewer
+-   **`server-install-logs`** - Installation logs
+-   **`server-schedules`** - Scheduled tasks
+-   **`server-settings`** - Server settings
+-   **`server-startup`** - Startup configuration
+-   **`server-subdomains`** - Subdomain management
+-   **`server-subusers`** - Subuser management
+-   **`server-tasks`** - Task management
+
+### Admin Pages
+
+-   **`admin-home`** - Admin dashboard
+-   **`admin-servers`** - Servers list
+-   **`admin-servers-create`** - Create server page
+-   **`admin-servers-edit`** - Edit server page
+-   **`admin-allocations`** - Network allocations management
+-   **`admin-api-keys`** - API keys management
+-   **`admin-images`** - Docker images management
+-   **`admin-locations`** - Locations management
+-   **`admin-mail-templates`** - Email templates
+-   **`admin-database-management`** - Database management
+-   **`admin-node-databases`** - Node databases
+-   **`admin-nodes`** - Nodes management
+-   **`admin-nodes-status`** - Nodes status dashboard
+-   **`admin-realms`** - Realms management
+-   **`admin-redirect-links`** - Redirect links
+-   **`admin-roles`** - Roles and permissions
+-   **`admin-settings`** - Admin settings
+-   **`admin-spells`** - Spells management
+-   **`admin-subdomains`** - Subdomains management
+-   **`admin-notifications`** - Notifications management
+-   **`admin-tickets`** - Tickets management
+-   **`admin-ticket-categories`** - Ticket categories management
+-   **`admin-ticket-statuses`** - Ticket statuses management
+-   **`admin-ticket-priorities`** - Ticket priorities management
+-   **`admin-knowledgebase-categories`** - Knowledgebase categories management
+-   **`admin-database-snapshots`** - Database snapshots management
+-   **`admin-users`** - Users management
+
+## Widget Locations
+
+Each page has specific widget locations where you can place your content. Locations are ordered from top to bottom of the page.
+
+### Dashboard Widget Locations
+
+1. `top-of-page` - Very top of page, before server list
+2. `before-server-list` - Before server list component
+3. `after-server-list` - After server list component
+4. `bottom-of-page` - Bottom of page
+
+### Server Console Widget Locations
+
+1. `top-of-page` - Top of page, before customization button
+2. `after-customization-panel` - After customization panel
+3. `after-header` - After server header with power buttons
+4. `after-wings-status` - After Wings connection status indicator
+5. `under-server-info-cards` - After server information cards
+6. `before-terminal-console` - Before terminal console
+7. `after-terminal-console` - After terminal console
+8. `after-performance-monitoring` - After performance charts
+9. `bottom-of-page` - Bottom of page
+
+### Server Activities Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-search-filters` - After search and filter card
+3. `before-activities-list` - Before activities list (only when activities exist)
+4. `after-activities-list` - After activities list, before pagination (only when activities exist)
+5. `bottom-of-page` - Bottom of page
+
+### Server Allocations Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-status-banner` - After allocation status banner
+3. `before-allocations-list` - Before allocations list (only when allocations exist)
+4. `after-allocations-list` - After allocations list (only when allocations exist)
+5. `bottom-of-page` - Bottom of page
+
+### Server Backups Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-warning-banner` - After backup limit warning banner
+3. `before-backups-list` - Before backups list (only when backups exist)
+4. `after-backups-list` - After backups list (only when backups exist)
+5. `bottom-of-page` - Bottom of page
+
+### Server Databases Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-warning-banner` - After database limit warning banner
+3. `before-databases-list` - Before databases list (only when databases exist)
+4. `after-databases-list` - After databases list (only when databases exist)
+5. `bottom-of-page` - Bottom of page
+
+### Server File Editor Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After file editor header, before Monaco editor (only when file is loaded)
+3. `bottom-of-page` - Bottom of page
+
+### Server Files Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After header section with action buttons
+3. `after-search-bar` - After search bar and breadcrumbs
+4. `before-files-list` - Before files list (only when files exist)
+5. `after-files-list` - After files list (only when files exist)
+6. `bottom-of-page` - Bottom of page
+
+### Server Logs Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-navigation-tabs` - After navigation tabs (logs/install logs)
+3. `after-logs-display` - After logs display (only when logs exist)
+4. `bottom-of-page` - Bottom of page
+
+### Server Install Logs Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-navigation-tabs` - After navigation tabs (logs/install logs)
+3. `after-logs-display` - After logs display (only when logs exist)
+4. `bottom-of-page` - Bottom of page
+
+### Server Schedules Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After header section with action buttons
+3. `before-schedules-list` - Before schedules list (only when schedules exist)
+4. `after-schedules-list` - After schedules list (only when schedules exist)
+5. `bottom-of-page` - Bottom of page
+
+### Server Settings Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After header section
+3. `after-server-information` - After server information card (only when server is loaded)
+4. `after-sftp-details` - After SFTP details card (only when server is loaded)
+5. `after-server-actions` - After server actions card (only when server is loaded and user has reinstall permission)
+6. `bottom-of-page` - Bottom of page
+
+### Server Startup Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After header section
+3. `after-startup-command` - After startup command card (only when server is loaded)
+4. `after-docker-image` - After Docker image card (only when server is loaded)
+5. `after-spell-selection` - After spell selection card (only when server is loaded and user can change spell)
+6. `after-variables` - After variables card (only when server is loaded)
+7. `bottom-of-page` - Bottom of page
+
+### Server Subdomains Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After header section
+3. `before-subdomains-list` - Before subdomains list (only when subdomains exist)
+4. `after-subdomains-list` - After subdomains list (only when subdomains exist)
+5. `bottom-of-page` - Bottom of page
+
+### Server Subusers Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After header section
+3. `before-subusers-list` - Before subusers list (only when subusers exist or search is active)
+4. `after-subusers-list` - After subusers list (only when subusers exist or search is active)
+5. `bottom-of-page` - Bottom of page
+
+### Server Tasks Widget Locations
+
+1. `top-of-page` - Top of page, before header
+2. `after-header` - After header section
+3. `before-tasks-list` - Before tasks list (only when tasks exist)
+4. `after-tasks-list` - After tasks list (only when tasks exist)
+5. `bottom-of-page` - Bottom of page
+
+### Account Widget Locations
+
+#### Main Account Page
+
+1. `top-of-page` - Top of page, before profile card
+2. `before-profile-card` - Before profile information card
+3. `after-profile-card` - After profile information card
+4. `before-tabs` - Before tabs section
+5. `after-tabs` - After tabs section
+6. `bottom-of-page` - Bottom of page
+
+#### Account Tabs
+
+Each account tab has two widget locations:
+
+-   **Profile Tab**: `profile-top`, `profile-bottom`
+-   **Settings Tab**: `settings-top`, `settings-bottom`
+-   **Appearance Tab**: `appearance-top`, `appearance-bottom`
+-   **SSH Keys Tab**: `ssh-keys-top`, `ssh-keys-bottom`
+-   **API Keys Tab**: `api-keys-top`, `api-keys-bottom`
+-   **Activity Tab**: `activity-top`, `activity-bottom`
+-   **Mail Tab**: `mail-top`, `mail-bottom`
+
+### Auth Pages Widget Locations
+
+Auth pages support the following widget locations:
+
+#### Login (`auth-login`), Register (`auth-register`), Forgot Password (`auth-forgot-password`), Reset Password (`auth-reset-password`), Setup Two-Factor (`auth-setup-two-factor`), Verify Two-Factor (`auth-verify-two-factor`)
+
+1. `top-of-page` - Top of page
+2. `before-form` - Before form
+3. `after-form` - After form
+4. `bottom-of-page` - Bottom of page
+
+#### Logout (`auth-logout`)
+
+1. `top-of-page` - Top of page
+2. `bottom-of-page` - Bottom of page
+
+### Error Pages Widget Locations
+
+Error pages (403, 404, 500) support:
+
+1. `top-of-page` - Top of page (before error layout)
+2. `bottom-of-page` - Bottom of page (in error layout footer slot)
+
+### Redirect Page Widget Locations
+
+1. `top-of-page` - Top of page
+2. `before-content` - Before redirect content
+3. `after-content` - After redirect content
+4. `bottom-of-page` - Bottom of page
+
+### Admin Pages Widget Locations
+
+#### Admin Home/Dashboard (`admin-home`)
+
+1. `top-of-page` - Top of page
+2. `after-header` - After the header section (welcome message and buttons)
+3. `before-widgets-grid` - Before the widgets grid
+4. `after-widgets-grid` - After the widgets grid
+5. `bottom-of-page` - Bottom of page
+
+#### Admin Servers (`admin-servers`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before the servers table
+3. `after-table` - After the servers table (before help cards)
+4. `after-help-cards` - After the help cards
+5. `bottom-of-page` - Bottom of page
+
+#### Create/Edit Server (`admin-servers-create`, `admin-servers-edit`)
+
+1. `top-of-page` - Top of page
+2. `before-form` - Before the server form
+3. `after-form` - After the server form
+4. `bottom-of-page` - Bottom of page
+
+#### Admin Tickets (`admin-tickets`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before tickets table
+3. `after-table` - After tickets table
+4. `bottom-of-page` - Bottom of page
+
+#### Admin Ticket Categories (`admin-ticket-categories`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before categories table
+3. `after-table` - After categories table
+4. `bottom-of-page` - Bottom of page
+
+#### Admin Ticket Statuses (`admin-ticket-statuses`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before statuses table
+3. `after-table` - After statuses table
+4. `bottom-of-page` - Bottom of page
+
+#### Admin Ticket Priorities (`admin-ticket-priorities`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before priorities table
+3. `after-table` - After priorities table
+4. `bottom-of-page` - Bottom of page
+
+#### Admin Knowledgebase Categories (`admin-knowledgebase-categories`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before categories table
+3. `after-table` - After categories table
+4. `bottom-of-page` - Bottom of page
+
+#### Admin Database Snapshots (`admin-database-snapshots`)
+
+1. `top-of-page` - Top of page
+2. `after-header` - After header section
+3. `before-table` - Before snapshots table
+4. `after-table` - After snapshots table
+5. `bottom-of-page` - Bottom of page
+
+#### Admin Database Management (`admin-database-management`)
+
+1. `top-of-page` - Top of page
+2. `after-header` - After header section
+3. `before-status-cards` - Before database status cards
+4. `after-status-cards` - After database status cards
+5. `after-migration-output` - After migration output section
+6. `after-help-cards` - After help/info cards
+7. `bottom-of-page` - Bottom of page
+
+#### Admin Nodes Status (`admin-nodes-status`)
+
+1. `top-of-page` - Top of page
+2. `after-header` - After header section
+3. `before-global-stats` - Before global statistics cards
+4. `after-global-stats` - After global statistics cards
+5. `after-resource-usage` - After resource usage section
+6. `after-individual-nodes` - After individual nodes list
+7. `bottom-of-page` - Bottom of page
+
+#### Admin Spells (`admin-spells`)
+
+1. `top-of-page` - Top of page
+2. `after-header` - After header section
+3. `before-installed-table` - Before installed spells table
+4. `after-installed-table` - After installed spells table
+5. `before-compatibility-card` - Before compatibility card
+6. `after-compatibility-card` - After compatibility card
+7. `before-documentation-cards` - Before documentation cards
+8. `after-documentation-cards` - After documentation cards
+9. `bottom-of-page` - Bottom of page
+
+#### Admin Subdomains (`admin-subdomains`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before subdomains table
+3. `after-table` - After subdomains table
+4. `bottom-of-page` - Bottom of page
+
+#### Admin Notifications (`admin-notifications`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before notifications table
+3. `after-table` - After notifications table
+4. `after-help-cards` - After help/info cards
+5. `bottom-of-page` - Bottom of page
+
+#### Admin Mail Templates (`admin-mail-templates`)
+
+1. `top-of-page` - Top of page
+2. `after-mass-email-card` - After mass email card
+3. `before-table` - Before templates table
+4. `after-table` - After templates table
+5. `after-help-cards` - After help/info cards
+6. `bottom-of-page` - Bottom of page
+
+#### Admin API Keys (`admin-api-keys`)
+
+1. `top-of-page` - Top of page
+2. `before-api-keys` - Before API keys list
+3. `after-api-keys` - After API keys list
+4. `after-guidance-cards` - After guidance/info cards
+5. `bottom-of-page` - Bottom of page
+
+#### Admin Node Databases (`admin-node-databases`)
+
+1. `top-of-page` - Top of page
+2. `before-table` - Before databases table
+3. `after-table` - After databases table
+4. `after-info-card` - After info card
+5. `bottom-of-page` - Bottom of page
+
+#### Other Admin Pages
+
+Most admin pages follow a similar pattern:
+
+1. `top-of-page` - Top of page
+2. `before-table` or `after-header` - Before main content
+3. `after-table` or location-specific - After main content
+4. `after-help-cards` - After help/info cards (if present)
+5. `bottom-of-page` - Bottom of page
+
+See the full reference list above for specific locations on each admin page.
+
+## Examples
+
+### Example 1: Simple Server Information Widget
+
+**widgets.json:**
+
+```json
+{
+    "id": "server-info-widget",
+    "component": "server-info.html",
+    "page": "server-console",
+    "location": "under-server-info-cards",
+    "size": "full"
+}
+```
+
+**Components/server-info.html:**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <style>
+            .server-info-widget {
+                background: rgba(18, 19, 21, 0.8);
+                border-radius: 0.75rem;
+                padding: 1.5rem;
+                border: 1px solid rgba(255, 255, 255, 0.07);
+            }
+            .widget-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                margin-bottom: 1rem;
+                color: #fafafa;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="server-info-widget">
+            <h3 class="widget-title">Custom Server Metrics</h3>
+            <div id="metrics">Loading...</div>
+        </div>
+        <script>
+            const serverUuid = window.FeatherPanel?.widgetContext?.serverUuid;
+            if (serverUuid) {
+                fetch(`/api/user/servers/${serverUuid}/addons/my_plugin/metrics`)
+                    .then((r) => r.json())
+                    .then((data) => {
+                        document.getElementById(
+                            'metrics'
+                        ).innerHTML = `<p>CPU: ${data.cpu}% | Memory: ${data.memory}%</p>`;
+                    });
+            }
+        </script>
+    </body>
+</html>
+```
+
+### Example 2: Multiple Side-by-Side Widgets
+
+**widgets.json:**
+
+```json
+[
+    {
+        "id": "stats-card-1",
+        "component": "stats1.html",
+        "page": "server-console",
+        "location": "under-server-info-cards",
+        "size": "third",
+        "priority": 100
+    },
+    {
+        "id": "stats-card-2",
+        "component": "stats2.html",
+        "page": "server-console",
+        "location": "under-server-info-cards",
+        "size": "third",
+        "priority": 90
+    },
+    {
+        "id": "stats-card-3",
+        "component": "stats3.html",
+        "page": "server-console",
+        "location": "under-server-info-cards",
+        "size": "third",
+        "priority": 80
+    }
+]
+```
+
+This creates three widgets that render side-by-side on desktop and stack on mobile.
+
+### Example 3: Conditional Widget
+
+**widgets.json:**
+
+```json
+{
+    "id": "premium-feature-widget",
+    "component": "premium-widget.html",
+    "page": "dashboard",
+    "location": "after-server-list",
+    "size": "full",
+    "enabled": true
+}
+```
+
+You can programmatically show/hide widgets based on conditions in your widget HTML or backend configuration.
+
+## Best Practices
+
+### 1. Widget Design
+
+-   **Match FeatherPanel's design language** - Use similar colors, spacing, and typography
+-   **Keep widgets focused** - Each widget should serve a specific purpose
+-   **Responsive design** - Ensure widgets work well on mobile devices
+-   **Loading states** - Show loading indicators while fetching data
+-   **Error handling** - Gracefully handle API failures
+
+### 2. Performance
+
+-   **Minimize external dependencies** - Only load libraries you actually need
+-   **Lazy load data** - Fetch widget data after the widget is visible
+-   **Cache data** - Cache API responses when appropriate
+-   **Optimize assets** - Minimize CSS and JavaScript in widget files
+
+### 3. Context Awareness
+
+-   **Check for context** - Always verify `serverUuid` exists before making server-specific calls
+-   **Handle missing context** - Gracefully handle cases where context isn't available
+-   **User permissions** - Respect user permissions in your widget logic
+
+### 4. Widget Placement
+
+-   **Choose appropriate locations** - Place widgets where they add the most value
+-   **Consider user flow** - Don't interrupt the user's workflow unnecessarily
+-   **Use priorities** - Order widgets logically using priority values
+
+### 5. API Integration
+
+-   **Use plugin endpoints** - Make API calls to your plugin's endpoints (e.g., `/api/user/servers/{uuid}/addons/{plugin_id}/...`)
+-   **Error handling** - Always handle API errors gracefully
+-   **Authentication** - Widget requests automatically include user authentication
+
+## Troubleshooting
+
+### Widget Not Appearing
+
+-   Verify `widgets.json` is in `Frontend/` directory
+-   Check that `component` path is correct (relative to `Components/` directory)
+-   Ensure `page` identifier matches exactly (case-sensitive)
+-   Verify `location` is valid for the target page
+-   Check browser console for JavaScript errors
+-   Ensure widget is enabled (`enabled: true`)
+
+### Context Not Available
+
+-   Verify you're accessing context correctly: `window.FeatherPanel?.widgetContext`
+-   Server context only available on server pages
+-   Check that the page actually provides context for widgets
+
+### Styling Issues
+
+-   Ensure your CSS doesn't conflict with FeatherPanel's styles
+-   Use specific class names to avoid conflicts
+-   Test on different screen sizes
+-   Check browser DevTools for CSS conflicts
+
+### API Calls Failing
+
+-   Verify endpoint paths are correct
+-   Check network tab in browser DevTools
+-   Ensure backend endpoints are properly registered
+-   Verify authentication tokens are being sent
+
+## Plugin Rendered Pages
+
+**Plugin rendered pages** (pages created via `sidebar.json` with `component` property) **do not support widgets** directly. Widgets are only available on FeatherPanel's native pages.
+
+If you need to add widgets to a plugin page, consider:
+
+1.  **Creating a native FeatherPanel page** that integrates your plugin functionality
+2.  **Using plugin widgets** on related native pages (e.g., add widgets to `server-console` that link to your plugin page)
+3.  **Embedding widget-like content** directly in your plugin HTML component
+
+## Related Documentation
+
+-   **[Plugin Pages](./development#plugin-pages)** - Creating standalone plugin pages
+-   **[Frontend Integration](./development#frontend-integration)** - JavaScript and CSS integration
+-   **[Plugin Development](./development)** - Complete plugin development guide

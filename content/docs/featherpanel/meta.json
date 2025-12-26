@@ -1,0 +1,15 @@
+{
+    "title": "FeatherPanel",
+    "description": "Game Server Panel",
+    "icon": "Feather",
+    "root": true,
+    "defaultIndex": 0,
+    "pages": [
+        "panel",
+        "wings",
+        "ssl",
+        "migration",
+        "---",
+        "development-guides"
+    ]
+}

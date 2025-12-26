@@ -1,0 +1,36 @@
+---
+title: Upgrade MythicalDash
+id: 'upgrade'
+pagination_next: null
+pagination_prev: null
+---
+
+# Upgrade MythicalDash
+
+This documentation covers the process for updating within the 3.x series of releases. This means updating from — for example — 3.0.0 to 3.1.0
+
+:::warning Important Before Upgrading
+- **Always create a backup** before upgrading
+- **Test in a staging environment** if possible
+- **Check the release notes** for breaking changes
+- **Ensure sufficient disk space** for the upgrade process
+:::
+
+## Choose Your Installation Method
+
+Select the upgrade method that matches how you originally installed MythicalDash:
+
+### Manual Installation
+If you installed MythicalDash directly on your server without Docker, follow the manual upgrade guide.
+
+[Manual Upgrade Guide →](/docs/mythicaldash-v3-remastered/upgrade/manual)
+
+### Docker Installation
+If you installed MythicalDash using Docker Compose, follow the Docker upgrade guide.
+
+[Docker Upgrade Guide →](/docs/mythicaldash-v3-remastered/upgrade/docker)
+
+:::info Not Sure Which Method You Used?
+- If you have a `/var/www/mythicaldash-v3/docker-compose.yml` file, you used **Docker**
+- If you have PHP files directly on your server and use Nginx/Apache, you used **Manual** installation
+:::

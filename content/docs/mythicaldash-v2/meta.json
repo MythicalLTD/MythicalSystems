@@ -1,0 +1,21 @@
+{
+    "title": "MythicalDash v2",
+    "description": "⚠️ Deprecated - Use V3 Remastered",
+    "icon": "LayoutDashboard",
+    "root": true,
+    "defaultIndex": 999,
+    "pages": [
+        "intro",
+        "install",
+        "---",
+        "webserver",
+        "createssl",
+        "---",
+        "congratulations",
+        "---",
+        "upgrade",
+        "uninstall",
+        "---",
+        "faq"
+    ]
+}

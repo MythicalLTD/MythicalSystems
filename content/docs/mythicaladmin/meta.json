@@ -1,0 +1,10 @@
+{
+    "title": "MythicalAdmin",
+    "description": "Administration Tools",
+    "icon": "Shield",
+    "root": true,
+    "pages": [
+        "intro",
+        "customize"
+    ]
+}
